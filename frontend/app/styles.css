@@ -26,6 +26,7 @@ button { color: inherit; }
 .navItem.active { background: #eaeaec; color: var(--ink); font-weight: 650; }
 .navItem:disabled { cursor: not-allowed; opacity: .48; }
 .soon { margin-left: auto; padding: 2px 7px; border-radius: 99px; background: #222; color: white; font-size: 10px; }
+.navBadge { margin-left: auto; padding: 2px 7px; border-radius: 99px; background: #eee9ff; color: #6d49d7; font-size: 8px; font-weight: 750; }
 .navDivider { height: 1px; margin: 22px 2px; background: var(--line); }
 .historySection { min-height: 0; flex: 1; overflow: hidden; }
 .sectionTitle { justify-content: space-between; padding: 0 12px 12px; color: #737373; font-size: 13px; }
@@ -126,6 +127,47 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .formMeta { gap: 17px; margin-top: 9px; color: #858585; font-size: 11px; }
 .workflowInputMeta .formMeta { margin-top: 0; }
 .formMeta span { display: flex; align-items: center; gap: 4px; }
+.conversationHome { padding-top: 20px; }
+.conversationHero { max-width: 780px; margin: 0 auto 18px; text-align: center; }
+.conversationEyebrow { display: inline-flex; align-items: center; gap: 7px; color: #6f6f72; font-size: 11px; font-weight: 700; }
+.conversationHero h1 { margin: 8px 0 5px; font-size: clamp(30px, 3.2vw, 43px); line-height: 1.1; letter-spacing: -.055em; text-wrap: balance; }
+.conversationHero p { max-width: 650px; margin: 0 auto; color: #858589; font-size: 13px; }
+.creationTypeTabs { width: fit-content; display: flex; align-items: center; gap: 3px; margin: 0 auto 12px; padding: 3px; border-radius: 12px; background: #eaeaeb; }
+.creationTypeTabs button { min-height: 36px; padding: 0 15px; border: 0; border-radius: 9px; background: transparent; color: #777; cursor: pointer; transition: background-color .18s ease, color .18s ease; }
+.creationTypeTabs button.active { background: white; color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.06); font-weight: 680; }
+.creationTypeTabs button:disabled { cursor: not-allowed; opacity: .38; }
+.conversationWorkbench { overflow: visible; border: 1px solid rgba(255,255,255,.96); border-radius: 26px; background: white; box-shadow: var(--shadow-float); }
+.conversationTop { min-height: 62px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; padding: 8px 20px; border-bottom: 1px solid var(--line); background: #f8f8f9; border-radius: 26px 26px 0 0; }
+.conversationProject { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.conversationProject > .brandSymbol { width: 31px; height: 18px; }
+.conversationProject > span { min-width: 0; display: grid; }
+.conversationProject b { overflow: hidden; max-width: 190px; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.conversationProject small { color: #999; font-size: 9px; }
+.conversationCounter { justify-self: end; padding: 4px 9px; border-radius: 99px; background: #ededee; color: #888; font-size: 10px; }
+.conversationThread { padding: 24px 28px 26px; }
+.assistantPrompt { max-width: 780px; display: flex; align-items: flex-start; gap: 11px; margin: 0 auto 15px; }
+.assistantPrompt .assistantAvatar { width: 36px; height: 36px; flex: 0 0 auto; border-radius: 12px; }
+.assistantPrompt .assistantAvatar .brandSymbol { width: 25px; height: 14px; color: white; }
+.assistantPrompt > div { min-width: 0; padding-top: 1px; }
+.assistantPrompt strong { font-size: 14px; }
+.assistantPrompt p { margin: 2px 0 0; color: #858589; font-size: 11px; }
+.conversationStage { max-width: 960px; margin: 0 auto; }
+.conversationStage .stepBody { min-height: 0; }
+.conversationStage .createStep { max-width: none; min-height: 0; display: block; padding: 0; }
+.conversationStage .createStep .stepIcon, .conversationStage .createStep .stepCopy, .conversationStage .uploadHeader { display: none; }
+.conversationStage .createStep .projectForm { margin: 0; }
+.conversationStage .uploadStep, .conversationStage .factsStep { padding: 0; }
+.conversationStage .uploadComposer { margin-top: 0; }
+.conversationStage .questionFlow { padding-top: 0; }
+.conversationStage .workflowFieldLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.conversationStage .workflowInputFrame { min-height: 150px; background: #fbfbfc; }
+.conversationStage .assetSection { margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 17px; background: #fafafa; }
+.conversationStage .factSummaryDisclosure { margin-top: 12px; }
+.conversationPrinciples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.conversationPrinciples article { min-height: 82px; display: flex; align-items: flex-start; gap: 11px; padding: 15px 17px; border: 1px solid rgba(255,255,255,.92); border-radius: 17px; background: rgba(255,255,255,.66); }
+.conversationPrinciples article > .icon { margin-top: 2px; color: #666; }
+.conversationPrinciples strong { font-size: 12px; }
+.conversationPrinciples p { margin: 2px 0 0; color: #89898d; font-size: 10px; }
 .uploadStep { padding: 24px; }
 .uploadHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 25px; }
 .uploadCompletionHint { display: flex; align-items: center; gap: 5px; margin-top: 8px; color: #777; font-size: 10px; }
@@ -493,6 +535,9 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .designPlanBody { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
+  .conversationTop { grid-template-columns: 1fr auto; }
+  .conversationTop .modeTabs { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+  .conversationTop .modeTabs button { flex: 1; justify-content: center; }
   .createStep { max-width: 760px; display: block; padding: 36px 36px 44px; text-align: center; }
   .createStep .stepIcon { width: 52px; height: 52px; margin: 0 auto 16px; }
   .createStep .projectForm { margin-top: 26px; text-align: left; }
@@ -515,6 +560,17 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .topActions { right: 15px; }
   .tokenBadge { padding: 0 10px; }
   .contentWrap { width: min(100% - 28px, 680px); margin-top: 12px; }
+  .conversationHome { padding-top: 8px; }
+  .conversationHero { margin-bottom: 14px; }
+  .conversationHero h1 { font-size: 29px; }
+  .conversationHero p { padding: 0 8px; font-size: 12px; }
+  .creationTypeTabs { max-width: 100%; overflow-x: auto; }
+  .creationTypeTabs button { flex: 0 0 auto; }
+  .conversationTop { padding: 10px 14px; }
+  .conversationThread { padding: 20px 16px 22px; }
+  .assistantPrompt { margin-bottom: 12px; }
+  .conversationStage .workflowInputFrame { min-height: 132px; }
+  .conversationPrinciples { grid-template-columns: 1fr; }
   .workbenchTop { grid-template-columns: 1fr auto; gap: 10px; padding: 10px 14px; }
   .workbenchTop .modeTabs { grid-column: 1 / -1; grid-row: 2; width: 100%; }
   .modeTabs button { flex: 1; justify-content: center; padding: 0 9px; font-size: 12px; }
@@ -570,6 +626,13 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .announcement b { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tokenBadge { font-size: 0; }.tokenBadge::after { content: "0 Token"; font-size: 11px; }
   .modeTabs button span { display: none; }
+  .conversationProject small { display: none; }
+  .conversationCounter { display: none; }
+  .conversationTop { grid-template-columns: 1fr; }
+  .conversationTop .modeTabs { grid-column: 1; }
+  .conversationTop .modeTabs button { padding-inline: 7px; font-size: 11px; }
+  .conversationThread { padding: 17px 12px 20px; }
+  .assistantPrompt p { font-size: 10px; }
   .designPlanHeader { display: grid; }.planVersion { justify-self: start; }
   .planCanvasSection { padding: 12px; }
   .planCanvasToolbar { align-items: stretch; flex-direction: column; }
