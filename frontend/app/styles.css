@@ -137,13 +137,15 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .creationTypeTabs button.active { background: white; color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.06); font-weight: 680; }
 .creationTypeTabs button:disabled { cursor: not-allowed; opacity: .38; }
 .conversationWorkbench { overflow: visible; border: 1px solid rgba(255,255,255,.96); border-radius: 26px; background: white; box-shadow: var(--shadow-float); }
-.conversationTop { min-height: 62px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; padding: 8px 20px; border-bottom: 1px solid var(--line); background: #f8f8f9; border-radius: 26px 26px 0 0; }
+.conversationTop { min-height: 62px; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 8px 20px; border-bottom: 1px solid var(--line); background: #f8f8f9; border-radius: 26px 26px 0 0; }
 .conversationProject { min-width: 0; display: flex; align-items: center; gap: 9px; }
 .conversationProject > .brandSymbol { width: 31px; height: 18px; }
 .conversationProject > span { min-width: 0; display: grid; }
 .conversationProject b { overflow: hidden; max-width: 190px; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .conversationProject small { color: #999; font-size: 9px; }
-.conversationCounter { justify-self: end; padding: 4px 9px; border-radius: 99px; background: #ededee; color: #888; font-size: 10px; }
+.conversationState { min-height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border-radius: 99px; background: #ededee; color: #777; font-size: 10px; font-weight: 650; white-space: nowrap; }
+.conversationState i { width: 6px; height: 6px; border-radius: 50%; background: #a8a8aa; }
+.conversationState.active { background: #f0edff; color: #6544c5; }.conversationState.active i { background: var(--purple); }
 .conversationThread { padding: 24px 28px 26px; }
 .assistantPrompt { max-width: 780px; display: flex; align-items: flex-start; gap: 11px; margin: 0 auto 15px; }
 .assistantPrompt .assistantAvatar { width: 36px; height: 36px; flex: 0 0 auto; border-radius: 12px; }
@@ -163,6 +165,32 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .conversationStage .workflowInputFrame { min-height: 150px; background: #fbfbfc; }
 .conversationStage .assetSection { margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 17px; background: #fafafa; }
 .conversationStage .factSummaryDisclosure { margin-top: 12px; }
+.singleConversationComposer { overflow: hidden; border: 1px solid #dcdcdf; border-radius: 22px; background: #fbfbfc; box-shadow: 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease; }
+.singleConversationComposer:focus-within { border-color: #b9b9bc; box-shadow: 0 0 0 3px rgba(0,0,0,.035); }
+.conversationNameField { min-height: 58px; display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; padding: 0 20px; border-bottom: 1px solid #e8e8ea; }
+.conversationNameField > span { color: #777; font-size: 11px; font-weight: 650; }
+.conversationNameField input { min-height: 57px; padding: 0; border: 0; outline: 0; background: transparent; font-size: 15px; font-weight: 650; }
+.conversationNameField input:disabled { color: var(--ink); opacity: 1; }
+.conversationBriefField { display: block; }
+.conversationBriefField textarea { width: 100%; min-height: 190px; display: block; resize: vertical; padding: 22px 20px 12px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 1.75; }
+.conversationBriefField textarea::placeholder { color: #a0a0a3; }
+.conversationPreviewStrip { display: flex; gap: 10px; padding: 10px 16px; overflow-x: auto; border-top: 1px solid #ececee; background: #f7f7f8; }
+.conversationAttachmentGroup { min-width: 0; display: flex; align-items: center; gap: 6px; }
+.conversationAttachmentButton { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #dedee1; border-radius: 10px; background: white; color: #454545; font-size: 10px; font-weight: 680; cursor: pointer; white-space: nowrap; transition: background-color .18s ease, border-color .18s ease; }
+.conversationAttachmentButton:hover:not(:disabled) { border-color: #bdbdc0; background: #f5f5f6; }
+.conversationAttachmentButton em { min-width: 20px; height: 20px; display: grid; place-items: center; padding: 0 4px; border-radius: 99px; background: #eeeeef; color: #777; font-size: 9px; font-style: normal; }
+.conversationThumb { position: relative; width: 44px; height: 36px; flex: 0 0 auto; overflow: visible; border-radius: 8px; background: #ececee; }
+.conversationThumb img { object-fit: cover; border-radius: 8px; }
+.conversationThumb > button { position: absolute; z-index: 2; top: -5px; right: -5px; width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 2px solid #f7f7f8; border-radius: 50%; background: #252525; color: white; cursor: pointer; }
+.conversationComposerFooter { min-height: 66px; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 12px 10px 16px; border-top: 1px solid #e8e8ea; background: white; }
+.conversationTools { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.conversationCategory { min-height: 38px; display: grid; grid-template-columns: auto auto auto; align-items: baseline; gap: 5px; padding: 0 10px; border-radius: 10px; background: #f1f1f2; color: #555; white-space: nowrap; }
+.conversationCategory small { color: #8a8a8d; font-size: 8px; }.conversationCategory b { font-size: 10px; }
+.conversationCategory i { width: 6px; height: 6px; margin-left: 2px; border-right: 1.5px solid #888; border-bottom: 1.5px solid #888; transform: rotate(45deg) translateY(-2px); }
+.conversationSubmit { min-height: 44px; flex: 0 0 auto; }
+.conversationFormError { min-height: 38px; display: flex; align-items: center; gap: 7px; margin: 0; padding: 0 18px; border-top: 1px solid #f3d6d3; background: #fff7f6; color: var(--danger); font-size: 11px; }
+.conversationPrivacy { min-height: 34px; display: flex; justify-content: center; align-items: center; gap: 6px; margin: 0; border-top: 1px solid #ededee; background: #fafafa; color: #888; font-size: 9px; }
+.srOnly { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .conversationPrinciples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
 .conversationPrinciples article { min-height: 82px; display: flex; align-items: flex-start; gap: 11px; padding: 15px 17px; border: 1px solid rgba(255,255,255,.92); border-radius: 17px; background: rgba(255,255,255,.66); }
 .conversationPrinciples article > .icon { margin-top: 2px; color: #666; }
@@ -535,9 +563,6 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .designPlanBody { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
-  .conversationTop { grid-template-columns: 1fr auto; }
-  .conversationTop .modeTabs { grid-column: 1 / -1; grid-row: 2; width: 100%; }
-  .conversationTop .modeTabs button { flex: 1; justify-content: center; }
   .createStep { max-width: 760px; display: block; padding: 36px 36px 44px; text-align: center; }
   .createStep .stepIcon { width: 52px; height: 52px; margin: 0 auto 16px; }
   .createStep .projectForm { margin-top: 26px; text-align: left; }
@@ -569,6 +594,7 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .conversationTop { padding: 10px 14px; }
   .conversationThread { padding: 20px 16px 22px; }
   .assistantPrompt { margin-bottom: 12px; }
+  .conversationBriefField textarea { min-height: 170px; }
   .conversationStage .workflowInputFrame { min-height: 132px; }
   .conversationPrinciples { grid-template-columns: 1fr; }
   .workbenchTop { grid-template-columns: 1fr auto; gap: 10px; padding: 10px 14px; }
@@ -627,12 +653,15 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .tokenBadge { font-size: 0; }.tokenBadge::after { content: "0 Token"; font-size: 11px; }
   .modeTabs button span { display: none; }
   .conversationProject small { display: none; }
-  .conversationCounter { display: none; }
-  .conversationTop { grid-template-columns: 1fr; }
-  .conversationTop .modeTabs { grid-column: 1; }
-  .conversationTop .modeTabs button { padding-inline: 7px; font-size: 11px; }
+  .conversationState { padding-inline: 8px; font-size: 9px; }
   .conversationThread { padding: 17px 12px 20px; }
   .assistantPrompt p { font-size: 10px; }
+  .conversationNameField { grid-template-columns: 72px minmax(0,1fr); padding-inline: 14px; }
+  .conversationBriefField textarea { min-height: 180px; padding: 18px 14px 10px; }
+  .conversationComposerFooter { align-items: stretch; flex-direction: column; padding: 10px; }
+  .conversationTools { width: 100%; overflow-x: auto; }
+  .conversationSubmit { width: 100%; }
+  .conversationPrivacy { padding: 7px 12px; text-align: center; }
   .designPlanHeader { display: grid; }.planVersion { justify-self: start; }
   .planCanvasSection { padding: 12px; }
   .planCanvasToolbar { align-items: stretch; flex-direction: column; }

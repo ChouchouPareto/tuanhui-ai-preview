@@ -99,6 +99,17 @@ function CreateStep({ busy, onSubmit }: { busy: boolean; onSubmit: (event: FormE
 }
 
 type PendingUpload = { id: string; file: File; previewUrl: string; role: string; subcategory: string; priority: number; isHero: boolean };
+type ConversationIntakePayload = { name: string; brief: string; storeItems: PendingUpload[]; dishItems: PendingUpload[] };
+
+function parseConversationBrief(brief: string): Record<string, string> {
+  const patterns: Record<string, RegExp> = {
+    positioning: /(?:门店定位|定位|主营)\s*[：:]\s*([^\n]+)/i,
+    hero_item: /(?:主推菜品或套餐|主推菜品|主推套餐|主推内容|主推)\s*[：:]\s*([^\n]+)/i,
+    hero_price: /(?:真实价格|套餐价格|价格|售价)\s*[：:]\s*([^\n]+)/i,
+    selling_points: /(?:真实卖点|核心卖点|卖点|特色)\s*[：:]\s*([^\n]+)/i,
+  };
+  return Object.fromEntries(Object.entries(patterns).flatMap(([field, pattern]) => { const value = brief.match(pattern)?.[1]?.trim(); return value ? [[field, value]] : []; }));
+}
 
 function SavedAssetCards({ assets, mode, library = false }: { assets: Asset[]; mode: LibraryTab; library?: boolean }) {
   if (!assets.length) return <div className={`emptyState ${library ? "libraryEmpty" : ""}`}><span className="emptyIcon"><Icon name={mode === "store" ? "store" : "image"} /></span><div><strong>{mode === "store" ? "还没有店铺素材" : "还没有菜品或菜单素材"}</strong><p>{library ? "素材保存后会自动出现在这里。" : "选择图片并点击“确认保存，下一步”。"}</p></div></div>;
@@ -210,21 +221,67 @@ function FactsStep({ coverage, busy, onSubmit, onConfirm, onSelectStore, factTex
   </div>;
 }
 
-function ConversationWorkbench({ activeStep, maxStep, projectName, message, messageTone, taskId, onSelect, children }: { activeStep: Step; maxStep: Step; projectName: string; message: string; messageTone: "info" | "success" | "error"; taskId: string; onSelect: (step: Step) => void; children: ReactNode }) {
-  const prompts: Record<1 | 2 | 3 | 4, { title: string; body: string }> = {
-    1: { title: "先告诉我门店叫什么", body: "创建项目不消耗 Token，后面的素材和信息都会自动归入这家店。" },
-    2: { title: "接着把门店图片发给我", body: "可以一次选择多张门头、环境和 Logo，确认保存后直接继续。" },
-    3: { title: "再补充菜单和菜品图", body: "菜单、招牌菜和普通菜品可以一起选择，系统会统一归类。" },
-    4: { title: "最后只确认生成必需的事实", body: "我会一次只问一个问题，不确定的店名、价格和卖点不会被直接写进图片。" },
-  };
-  const current = Math.min(activeStep, 4) as 1 | 2 | 3 | 4;
-  const prompt = prompts[current];
+function ConversationIntake({ projectName, assets, busy, onSubmit }: { projectName: string; assets: Asset[]; busy: boolean; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean> }) {
+  const [name, setName] = useState(projectName);
+  const [brief, setBrief] = useState("");
+  const [storeItems, setStoreItems] = useState<PendingUpload[]>([]);
+  const [dishItems, setDishItems] = useState<PendingUpload[]>([]);
+  const [error, setError] = useState("");
+  const storeInputRef = useRef<HTMLInputElement>(null);
+  const dishInputRef = useRef<HTMLInputElement>(null);
+  const pendingRef = useRef<PendingUpload[]>([]);
+  const allPending = [...storeItems, ...dishItems];
+  const savedStoreCount = assets.filter((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)).length;
+  const savedDishCount = assets.filter((asset) => DISH_ASSET_ROLES.includes(asset.semantic_role)).length;
+
+  useEffect(() => { pendingRef.current = allPending; });
+  useEffect(() => () => { pendingRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl)); }, []);
+
+  function chooseFiles(event: ChangeEvent<HTMLInputElement>, kind: "store" | "dish") {
+    const current = kind === "store" ? storeItems : dishItems;
+    const files = Array.from(event.target.files ?? []).slice(0, Math.max(0, 20 - current.length));
+    const additions = files.map((file, index) => ({ id: `${kind}-${Date.now()}-${index}-${file.name}`, file, previewUrl: URL.createObjectURL(file), role: kind === "store" ? "storefront" : "dish", subcategory: "", priority: 100, isHero: false }));
+    if (kind === "store") setStoreItems((items) => [...items, ...additions]); else setDishItems((items) => [...items, ...additions]);
+    event.target.value = "";
+  }
+
+  function removeFile(id: string, kind: "store" | "dish") {
+    const update = (items: PendingUpload[]) => { const removed = items.find((item) => item.id === id); if (removed) URL.revokeObjectURL(removed.previewUrl); return items.filter((item) => item.id !== id); };
+    if (kind === "store") setStoreItems(update); else setDishItems(update);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!name.trim()) { setError("请填写门店名称"); return; }
+    if (!brief.trim()) { setError("请在输入框里写明门店定位、主推内容、价格和真实卖点"); return; }
+    if (!savedStoreCount && !storeItems.length) { setError("请添加至少一张门店素材"); return; }
+    if (!savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
+    setError("");
+    const saved = await onSubmit({ name: name.trim(), brief: brief.trim(), storeItems, dishItems });
+    if (saved) { allPending.forEach((item) => URL.revokeObjectURL(item.previewUrl)); setStoreItems([]); setDishItems([]); }
+  }
+
+  const attachmentGroup = (kind: "store" | "dish", items: PendingUpload[], savedCount: number) => <div className="conversationAttachmentGroup"><button className="conversationAttachmentButton" type="button" disabled={busy} onClick={() => (kind === "store" ? storeInputRef : dishInputRef).current?.click()}><Icon name={kind === "store" ? "store" : "image"} size={17} /><span>{kind === "store" ? "门店素材" : "菜品素材"}</span><em>{savedCount + items.length || "+"}</em></button>{items.map((item, index) => <span className="conversationThumb" key={item.id}><Image src={item.previewUrl} alt={`${kind === "store" ? "门店" : "菜品"}待上传图片 ${index + 1}`} fill unoptimized sizes="42px" /><button type="button" aria-label={`移除 ${item.file.name}`} onClick={() => removeFile(item.id, kind)}><Icon name="close" size={10} /></button></span>)}</div>;
+
+  return <form className="singleConversationComposer" noValidate onSubmit={submit}>
+    <label className="conversationNameField"><span>门店名称</span><input value={name} maxLength={120} autoComplete="organization" placeholder="例如：山城酸菜鱼" disabled={Boolean(projectName) || busy} onChange={(event) => setName(event.target.value)} /></label>
+    <label className="conversationBriefField"><span className="srOnly">本次创作需求</span><textarea value={brief} maxLength={800} disabled={busy} placeholder={`把本次创作需要的信息一次告诉我，例如：\n门店定位：川渝江湖菜\n主推菜品或套餐：酸菜鱼双人餐\n真实价格：99 元\n真实卖点：活鱼现做，酸香开胃`} onChange={(event) => setBrief(event.target.value)} /></label>
+    {allPending.length > 0 && <div className="conversationPreviewStrip" aria-label="已选择素材预览">{attachmentGroup("store", storeItems, savedStoreCount)}{attachmentGroup("dish", dishItems, savedDishCount)}</div>}
+    <div className="conversationComposerFooter"><div className="conversationTools">{!allPending.length && <>{attachmentGroup("store", storeItems, savedStoreCount)}{attachmentGroup("dish", dishItems, savedDishCount)}</>}<span className="conversationCategory"><small>门店类型</small><b>餐饮美食</b><i aria-hidden="true" /></span></div><button className="primaryButton conversationSubmit" disabled={busy}>{busy ? "正在整理资料…" : <>提交全部资料 <Icon name="arrow" size={17} /></>}</button></div>
+    <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "store")} />
+    <input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "dish")} />
+    {error && <p className="conversationFormError" role="alert"><Icon name="close" size={15} />{error}</p>}
+    <p className="conversationPrivacy"><Icon name="check" size={14} />一次提交后自动整理；只有缺少必要事实时，才会继续在这里追问。</p>
+  </form>;
+}
+
+function ConversationWorkbench({ projectName, message, messageTone, taskId, collectingFacts, children }: { projectName: string; message: string; messageTone: "info" | "success" | "error"; taskId: string; collectingFacts: boolean; children: ReactNode }) {
   return <section className="conversationHome" aria-labelledby="conversation-title">
-    <header className="conversationHero"><span className="conversationEyebrow"><Icon name="spark" size={15} />团绘店长·对话创作</span><h1 id="conversation-title">把门店素材给我，剩下的一步步来</h1><p>一个工作台完成信息、素材和事实确认，不需要在多个页面之间找入口。</p></header>
+    <header className="conversationHero"><span className="conversationEyebrow"><Icon name="spark" size={15} />团绘店长·对话创作</span><h1 id="conversation-title">一次发齐资料，直接开始创作</h1><p>门店信息、门店素材和菜品素材都放进同一个对话框，不需要切换页面。</p></header>
     <div className="creationTypeTabs" role="tablist" aria-label="创作类型"><button type="button" className="active" role="tab" aria-selected="true">团购首页五图</button><button type="button" role="tab" aria-selected="false" disabled>Logo 设计</button><button type="button" role="tab" aria-selected="false" disabled>品牌介绍图</button></div>
     <section className="conversationWorkbench" aria-label="团绘店长对话工作台">
-      <div className="conversationTop"><div className="conversationProject"><BrandMark /><span><b>{projectName || "新建门店项目"}</b><small>对话收集·四步完成</small></span></div><StepTabs active={current} maxStep={Math.min(maxStep, 4) as Step} onSelect={onSelect} /><span className="conversationCounter">{current} / 4</span></div>
-      <div className="conversationThread"><div className="assistantPrompt"><span className="assistantAvatar"><BrandMark /></span><div><strong>{prompt.title}</strong><p>{prompt.body}</p></div></div><div className="conversationStage">{children}</div></div>
+      <div className="conversationTop"><div className="conversationProject"><BrandMark /><span><b>{projectName || "新建门店项目"}</b><small>{collectingFacts ? "资料已提交·正在确认事实" : "统一资料入口"}</small></span></div><span className={`conversationState ${collectingFacts ? "active" : ""}`}><i />{collectingFacts ? "事实确认中" : "等待资料"}</span></div>
+      <div className="conversationThread"><div className="assistantPrompt"><span className="assistantAvatar"><BrandMark /></span><div><strong>{collectingFacts ? "资料已经收到了，再确认最后几项" : "把这家店的资料一次发给我"}</strong><p>{collectingFacts ? "不会跳转页面；缺少的事实会继续在当前对话里逐项补齐。" : "写清门店定位、主推内容、价格和真实卖点，同时附上门店与菜品图片。"}</p></div></div><div className="conversationStage">{children}</div></div>
       <div className={`statusToast ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={17} /> : messageTone === "error" ? <Icon name="close" size={17} /> : <Icon name="spark" size={17} />}</span><p>{message}</p>{taskId && <small>任务 {taskId.slice(0, 8)}</small>}</div>
     </section>
     <section className="conversationPrinciples" id="guide" aria-label="对话创作原则"><article><Icon name="upload" size={18} /><div><strong>素材直接发</strong><p>门店图和菜品图都附着在当前对话里。</p></div></article><article><Icon name="chat" size={18} /><div><strong>缺什么再问</strong><p>只追问生成必需的门店事实。</p></div></article><article><Icon name="check" size={18} /><div><strong>确认后才生成</strong><p>事实和费用节点都保留人工确认。</p></div></article></section>
@@ -268,10 +325,12 @@ export default function Home() {
   const hasStoreAssets = assets.some((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)); const maxStep: Step = designPlan?.status === "CONFIRMED" ? 6 : designPlan ? 5 : coverage || taskId ? 4 : hasStoreAssets ? 3 : projectId ? 2 : 1; const factText = (key: string) => Array.isArray(coverage?.facts[key]) ? (coverage?.facts[key] as string[]).join("、") : String(coverage?.facts[key] ?? "待确认");
   function notify(text: string, tone: "info" | "success" | "error" = "info") { setMessage(text); setMessageTone(tone); }
   async function createProject(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); const fd = new FormData(event.currentTarget); const name = String(fd.get("name") ?? "").trim(); const industry = String(fd.get("industry") ?? "餐饮"); try { const result = await apiRequest<{ project_id: string }>("/projects", jsonRequest("POST", { name, industry, platforms: ["douyin", "meituan"] })); window.history.replaceState({}, "", `?project=${result.project_id}`); setProjectId(result.project_id); setProjectName(name); setAssets([]); setCoverage(null); setDesignPlan(null); setGenerationTask(null); setActiveStep(2); notify("项目已创建，请先上传门店素材。", "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } }
-  async function refreshAssets() { setAssets(await apiRequest<Asset[]>(`/projects/${projectId}/assets`)); }
-  async function uploadBatch(items: PendingUpload[]): Promise<boolean> { if (!projectId || !items.length) return false; setBusy(true); let completed = 0; const groupName = items[0].role === "storefront" ? "门店" : "菜品"; try { for (const item of items) { const fd = new FormData(); const assetType = item.role === "storefront" ? "storefront" : item.role === "menu" ? "menu" : DISH_ASSET_ROLES.includes(item.role) ? "product" : "other"; fd.append("file", item.file); fd.append("asset_type", assetType); fd.append("semantic_role", item.role); if (item.subcategory.trim()) fd.append("subcategory", item.subcategory.trim()); fd.append("priority", String(item.priority)); if (item.isHero) fd.append("is_hero", "true"); await apiRequest(`/projects/${projectId}/assets`, { method: "POST", body: fd }); completed += 1; } await refreshAssets(); notify(`已成功上传 ${completed} 张${groupName}素材。`, "success"); return true; } catch (error) { if (completed) await refreshAssets(); notify(`${completed ? `已完成 ${completed} 张；` : ""}${(error as Error).message}`, "error"); return false; } finally { setBusy(false); } }
+  async function refreshAssets(targetProjectId = projectId) { const latest = await apiRequest<Asset[]>(`/projects/${targetProjectId}/assets`); setAssets(latest); return latest; }
+  async function persistUploads(items: PendingUpload[], targetProjectId: string) { let completed = 0; for (const item of items) { const fd = new FormData(); const assetType = item.role === "storefront" ? "storefront" : item.role === "menu" ? "menu" : DISH_ASSET_ROLES.includes(item.role) ? "product" : "other"; fd.append("file", item.file); fd.append("asset_type", assetType); fd.append("semantic_role", item.role); if (item.subcategory.trim()) fd.append("subcategory", item.subcategory.trim()); fd.append("priority", String(item.priority)); if (item.isHero) fd.append("is_hero", "true"); await apiRequest(`/projects/${targetProjectId}/assets`, { method: "POST", body: fd }); completed += 1; } return completed; }
+  async function uploadBatch(items: PendingUpload[]): Promise<boolean> { if (!projectId || !items.length) return false; setBusy(true); let completed = 0; const groupName = items[0].role === "storefront" ? "门店" : "菜品"; try { completed = await persistUploads(items, projectId); await refreshAssets(projectId); notify(`已成功上传 ${completed} 张${groupName}素材。`, "success"); return true; } catch (error) { if (completed) await refreshAssets(projectId); notify(`${completed ? `已完成 ${completed} 张；` : ""}${(error as Error).message}`, "error"); return false; } finally { setBusy(false); } }
   async function analyze(useAI = false) { if (!projectId) return; if (useAI && !window.confirm("AI 将识别已上传图片并产生模型费用。确认继续吗？")) return; setBusy(true); try { const task = await apiRequest<{ task_id: string }>(`/projects/${projectId}/analysis-runs`, jsonRequest("POST", { use_ai: useAI })); setTaskId(task.task_id); setActiveStep(4); notify(useAI ? "正在调用 AI 识别素材，请稍候。" : "正在整理需要你确认的门店信息。", "info"); window.setTimeout(() => void loadCoverage(0), useAI ? 1000 : 150); } catch (error) { notify((error as Error).message, "error"); setBusy(false); } }
-  async function loadCoverage(attempt = 0) { try { const result = await apiRequest<Coverage>(`/projects/${projectId}/coverage`); setCoverage(result); notify(result.ready_for_confirmation ? "核心信息已齐，请核对后锁定。" : "请补充下面的缺失信息，系统不会替你猜。", result.ready_for_confirmation ? "success" : "info"); setBusy(false); } catch (error) { if ((error as { code?: string }).code === "HTTP_409" && attempt < 8) { window.setTimeout(() => void loadCoverage(attempt + 1), 250); return; } notify((error as Error).message, "error"); setBusy(false); } }
+  async function loadCoverage(attempt = 0, targetProjectId = projectId) { try { const result = await apiRequest<Coverage>(`/projects/${targetProjectId}/coverage`); setCoverage(result); notify(result.ready_for_confirmation ? "核心信息已齐，请核对后锁定。" : "请补充下面的缺失信息，系统不会替你猜。", result.ready_for_confirmation ? "success" : "info"); setBusy(false); } catch (error) { if ((error as { code?: string }).code === "HTTP_409" && attempt < 8) { window.setTimeout(() => void loadCoverage(attempt + 1, targetProjectId), 250); return; } notify((error as Error).message, "error"); setBusy(false); } }
+  async function loadConversationCoverage(targetProjectId: string, answers: Record<string, string>, attempt = 0) { try { let result = await apiRequest<Coverage>(`/projects/${targetProjectId}/coverage`); if (Object.keys(answers).length) { const clarified = await apiRequest<{ fact_version: number; facts: Facts; coverage: Coverage }>(`/projects/${targetProjectId}/clarifications`, jsonRequest("POST", { answers })); result = { ...clarified.coverage, fact_version: clarified.fact_version, facts: clarified.facts }; } setCoverage(result); setActiveStep(4); notify(result.ready_for_confirmation ? "资料已经整理完成，请核对后锁定事实。" : "资料已整理好，只需在当前对话补充缺失事实。", result.ready_for_confirmation ? "success" : "info"); setBusy(false); } catch (error) { if ((error as { code?: string }).code === "HTTP_409" && attempt < 8) { window.setTimeout(() => void loadConversationCoverage(targetProjectId, answers, attempt + 1), 250); return; } notify((error as Error).message, "error"); setBusy(false); } }
   async function submitAnswers(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); const fd = new FormData(event.currentTarget); const answers: Record<string, string> = {}; coverage?.questions.forEach((question) => { const value = String(fd.get(question.field) ?? "").trim(); if (value) answers[question.field] = value; }); try { const result = await apiRequest<{ fact_version: number; facts: Facts; coverage: Coverage }>(`/projects/${projectId}/clarifications`, jsonRequest("POST", { answers })); setCoverage({ ...result.coverage, fact_version: result.fact_version, facts: result.facts }); notify(result.coverage.ready_for_confirmation ? "信息已补齐，请核对并确认。" : "已保存，仍有少量信息需要补充。", result.coverage.ready_for_confirmation ? "success" : "info"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } }
   async function confirm() { if (!coverage) return; setBusy(true); try { await apiRequest(`/projects/${projectId}/fact-versions/${coverage.fact_version}/confirm`, jsonRequest("POST", { confirmed: true })); const plan = await apiRequest<DesignPlan>(`/projects/${projectId}/design-plans`, jsonRequest("POST", { style: "appetite" })); setDesignPlan(plan); setActiveStep(5); notify("事实已锁定，五图方案已整理好，请确认风格与每屏内容。", "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } }
   async function updatePlanStyle(style: string) { if (!designPlan) return; setBusy(true); try { const plan = await apiRequest<DesignPlan>(`/projects/${projectId}/design-plans/${designPlan.id}`, jsonRequest("PATCH", { style })); setDesignPlan(plan); notify(`已切换为${plan.plan.style.name}风格。`, "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } }
@@ -282,6 +341,7 @@ export default function Home() {
   async function selectStoreName(name: string) { setBusy(true); try { await apiRequest(`/projects/${projectId}/fact-versions`, jsonRequest("POST", { store_name: name })); await loadCoverage(); notify(`已确认目标门店：${name}`, "success"); } catch (error) { notify((error as Error).message, "error"); setBusy(false); } }
   function navigate(view: WorkspaceView) { if (view === "conversation" || view === "professional") libraryReturnView.current = view; setActiveView(view); setSidebarOpen(false); }
   function openLibrary(tab: LibraryTab) { if (activeView === "conversation" || activeView === "professional") libraryReturnView.current = activeView; setLibraryTab(tab); navigate("library"); }
+  async function submitConversationIntake(payload: ConversationIntakePayload): Promise<boolean> { setBusy(true); let targetProjectId = projectId; try { if (!targetProjectId) { const created = await apiRequest<{ project_id: string }>("/projects", jsonRequest("POST", { name: payload.name, industry: "餐饮", platforms: ["douyin", "meituan"] })); targetProjectId = created.project_id; setProjectId(targetProjectId); setProjectName(payload.name); window.history.replaceState({}, "", `?project=${targetProjectId}`); } const uploadedStore = payload.storeItems.length ? await persistUploads(payload.storeItems, targetProjectId) : 0; const uploadedDish = payload.dishItems.length ? await persistUploads(payload.dishItems, targetProjectId) : 0; await refreshAssets(targetProjectId); const task = await apiRequest<{ task_id: string }>(`/projects/${targetProjectId}/analysis-runs`, jsonRequest("POST", { use_ai: false })); setTaskId(task.task_id); setActiveStep(4); notify(`已保存 ${uploadedStore + uploadedDish} 张新素材，正在整理门店事实。`, "info"); window.setTimeout(() => void loadConversationCoverage(targetProjectId, parseConversationBrief(payload.brief)), 150); return true; } catch (error) { notify((error as Error).message, "error"); setBusy(false); return false; } }
 
   const activeStepContent = <>
     {activeStep === 1 && <CreateStep busy={busy} onSubmit={createProject} />}
@@ -298,7 +358,7 @@ export default function Home() {
     <main className="mainArea" id="workspace">
       <header className="topbar"><button className="iconButton menuButton" aria-label="打开导航" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button><div className="announcement"><span>NEW</span><b>团绘AI 对话优先测试版</b><small>先确认事实，再进入成图</small></div><div className="topActions"><span className="tokenBadge"><i /> 默认 0 Token</span><a className="helpButton" href="#guide"><Icon name="help" size={18} />帮助</a></div></header>
       <div className="contentWrap">
-        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeView === "conversation" && activeStep <= 4 ? <ConversationWorkbench activeStep={activeStep} maxStep={maxStep} projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} onSelect={setActiveStep}>{activeStepContent}</ConversationWorkbench> : <>
+        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeView === "conversation" && activeStep <= 4 ? <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts={Boolean(coverage)}>{coverage ? <FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /> : <ConversationIntake projectName={projectName} assets={assets} busy={busy} onSubmit={submitConversationIntake} />}</ConversationWorkbench> : <>
           <section className="workbench" aria-label={activeView === "professional" ? "专业门店资料采集工作台" : "五图创作工作台"}>
             <div className="workbenchTop"><div className="workbenchLabel"><Icon name={activeStep === 1 ? "store" : activeStep === 4 ? "chat" : activeStep >= 5 ? "spark" : "upload"} size={18} /><span><b>{activeStep >= 5 ? "五图创作" : "门店视觉包"}</b><small>{projectName || "新建项目"}</small></span></div><StepTabs active={activeStep} maxStep={maxStep} onSelect={setActiveStep} /><div className="stepCounter">{activeStep >= 5 ? activeStep - 4 : activeStep} / {activeStep >= 5 ? 2 : 4}</div></div>
             {activeStepContent}
