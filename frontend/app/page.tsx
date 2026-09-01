@@ -64,7 +64,7 @@ function Sidebar({ open, onClose, projectName, activeView, onNavigate }: { open:
 
 function StepTabs({ active, maxStep, onSelect }: { active: Step; maxStep: Step; onSelect: (step: Step) => void }) {
   const creationMode = active >= 5;
-  const items = creationMode ? [{ step: 5 as Step, label: "确认设计方案" }, { step: 6 as Step, label: "生成与下载" }] : ["门店信息", "上传门店素材", "上传菜品素材", "确认事实"].map((label, index) => ({ step: (index + 1) as Step, label }));
+  const items = creationMode ? [{ step: 5 as Step, label: "确认设计方案" }, { step: 6 as Step, label: "生成与下载" }] : ["门店信息", "门店素材", "菜品素材", "确认事实"].map((label, index) => ({ step: (index + 1) as Step, label }));
   return <div className="modeTabs" aria-label={creationMode ? "设计生成步骤" : "资料采集步骤"}>{items.map(({ step, label }, index) => <button type="button" key={label} className={active === step ? "active" : ""} aria-current={active === step ? "step" : undefined} disabled={step > maxStep} onClick={() => onSelect(step)}><span>{index + 1}</span>{label}</button>)}</div>;
 }
 
