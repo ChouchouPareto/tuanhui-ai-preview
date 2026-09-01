@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="团绘AI对话创作页面展示版">
+  <title>团绘AI·对话创作</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button class="mobile-menu" type="button" aria-label="打开导航" aria-expanded="false">☰</button>
+  <div class="scrim" aria-hidden="true"></div>
+  <aside class="sidebar" aria-label="主导航">
+    <a class="brand" href="#main" aria-label="团绘AI首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>团绘AI</strong><small>TUANHUI AI</small></span></a>
+    <nav>
+      <button class="nav-item active" type="button" data-view="conversation"><span class="nav-icon" aria-hidden="true">◇</span>对话创作<em>NEW</em></button>
+      <button class="nav-item" type="button" data-view="professional"><span class="nav-icon" aria-hidden="true">✦</span>专业创作</button>
+      <button class="nav-item" type="button" disabled><span class="nav-icon" aria-hidden="true">□</span>我的项目<small>待接入</small></button>
+      <button class="nav-item" type="button" disabled><span class="nav-icon" aria-hidden="true">▣</span>素材库</button>
+    </nav>
+    <div class="sidebar-foot"><span class="avatar">N</span><span><b>测试用户</b><small>团绘AI 展示版</small></span></div>
+  </aside>
+
+  <main id="main">
+    <header class="topbar"><div class="notice"><b>NEW</b><span>团绘AI 对话创作版</span><small>先确认事实，再进入成图</small></div><span class="token"><i></i>展示模式·0 Token</span></header>
+
+    <section class="view active" id="conversation-view">
+      <header class="hero"><span>✦ 团绘店长·对话创作</span><h1>把门店素材给我，剩下的一步步来</h1><p>一个工作台完成信息、素材和事实确认。</p></header>
+      <div class="product-tabs" role="tablist"><button class="active" type="button">团购首页五图</button><button type="button" disabled>Logo 设计</button><button type="button" disabled>品牌介绍图</button></div>
+      <section class="chat-workbench">
+        <header class="workbench-head"><div class="project-name"><span class="mini-logo">✦</span><span><b id="project-label">新建门店项目</b><small>对话收集·四步完成</small></span></div><div class="steps" aria-label="创作进度"><button class="active" type="button" data-step="1"><i>1</i>门店信息</button><button type="button" data-step="2" disabled><i>2</i>门店素材</button><button type="button" data-step="3" disabled><i>3</i>菜品素材</button><button type="button" data-step="4" disabled><i>4</i>确认事实</button></div><span class="step-count">1 / 4</span></header>
+        <div class="thread"><div class="assistant"><span class="assistant-logo">✦</span><div><strong id="assistant-title">先告诉我门店叫什么</strong><p id="assistant-copy">创建项目不消耗 Token，后面的素材和信息会自动归入这家店。</p></div></div>
+          <form class="composer" id="composer">
+            <div class="attachment-preview" id="attachment-preview" aria-live="polite"></div>
+            <label class="sr-only" for="main-input">当前步骤输入</label>
+            <textarea id="main-input" rows="3" placeholder="例如：山城酸菜鱼"></textarea>
+            <div class="composer-actions"><div class="composer-options"><button id="upload-trigger" class="attach-button" type="button" hidden>＋ 选择图片</button><span>业务分类·餐饮美食</span><span>平台·抖音+美团</span></div><button class="send-button" type="submit"><span id="send-label">创建项目</span><b aria-hidden="true">→</b></button></div>
+            <input id="file-input" type="file" accept="image/*" multiple hidden>
+          </form>
+        </div>
+        <footer class="status" id="status">✦ 准备好后，从门店名称开始。</footer>
+      </section>
+      <section class="principles"><article><b>素材直接发</b><p>门店图和菜品图都附着在当前对话里。</p></article><article><b>缺什么再问</b><p>只追问生成必需的门店事实。</p></article><article><b>确认后才生成</b><p>事实和费用节点都保留人工确认。</p></article></section>
+    </section>
+
+    <section class="view" id="professional-view">
+      <header class="hero compact"><span>专业创作</span><h1>按步骤精细检查每项资料</h1><p>保留原来的四步页面逻辑，适合代运营和需要严格核对的用户。</p></header>
+      <section class="professional-card"><header><b>门店视觉包</b><div class="steps static"><button class="active" type="button"><i>1</i>门店信息</button><button type="button"><i>2</i>门店素材</button><button type="button"><i>3</i>菜品素材</button><button type="button"><i>4</i>确认事实</button></div></header><div class="professional-body"><div><span class="big-icon">□</span><small>门店项目</small><h2>今天要为哪家店创作？</h2><p>填写门店名称并选择分类，先建立这次设计任务。</p></div><div class="professional-input"><span>例如：山城酸菜鱼</span><button type="button">创建项目 →</button></div></div></section>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
