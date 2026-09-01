@@ -1,22 +1,19 @@
-const prompts = {
-  1: ["先告诉我门店叫什么", "创建项目不消耗 Token，后面的素材和信息会自动归入这家店。", "例如：山城酸菜鱼", "创建项目"],
-  2: ["接着把门店图片发给我", "可以一次选择多张门头、环境和 Logo，确认保存后直接继续。", "可选：补充门店环境或品牌要求", "保存，继续"],
-  3: ["再补充菜单和菜品图", "菜单、招牌菜和普通菜品可以一起选择，系统会统一归类。", "可选：告诉我本次最想主推什么", "保存，确认事实"],
-  4: ["最后只确认生成必需的事实", "展示版模拟一个追问：本次团购首页最想主推哪道菜或哪个套餐？", "输入准确的主推内容", "确认并锁定"],
-};
-let step = 1;
 const views = document.querySelectorAll(".view");
 const navItems = document.querySelectorAll("[data-view]");
-const stepButtons = document.querySelectorAll("[data-step]");
-const title = document.querySelector("#assistant-title");
-const copy = document.querySelector("#assistant-copy");
-const input = document.querySelector("#main-input");
-const sendLabel = document.querySelector("#send-label");
-const uploadTrigger = document.querySelector("#upload-trigger");
-const fileInput = document.querySelector("#file-input");
+const composer = document.querySelector("#composer");
+const nameInput = document.querySelector("#store-name");
+const briefInput = document.querySelector("#main-input");
+const storeFiles = document.querySelector("#store-files");
+const dishFiles = document.querySelector("#dish-files");
 const preview = document.querySelector("#attachment-preview");
 const status = document.querySelector("#status");
 const projectLabel = document.querySelector("#project-label");
+const projectState = document.querySelector("#project-state");
+const stateBadge = document.querySelector(".collection-state");
+const assistantTitle = document.querySelector("#assistant-title");
+const assistantCopy = document.querySelector("#assistant-copy");
+const sendLabel = document.querySelector("#send-label");
+let confirming = false;
 
 function setView(name) {
   views.forEach((view) => view.classList.toggle("active", view.id === `${name}-view`));
@@ -26,29 +23,58 @@ function setView(name) {
 }
 navItems.forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
 
-function renderStep() {
-  const prompt = prompts[step];
-  title.textContent = prompt[0]; copy.textContent = prompt[1]; input.placeholder = prompt[2]; sendLabel.textContent = prompt[3];
-  document.querySelector(".step-count").textContent = `${step} / 4`;
-  stepButtons.forEach((button) => { const value = Number(button.dataset.step); button.disabled = value > step; button.classList.toggle("active", value === step); });
-  uploadTrigger.hidden = step === 1 || step === 4;
-  input.value = ""; preview.innerHTML = "";
+function renderAttachments() {
+  preview.replaceChildren();
+  [["门店", storeFiles.files], ["菜品", dishFiles.files]].forEach(([kind, files]) => {
+    Array.from(files).slice(0, 10).forEach((file, index) => {
+      const item = document.createElement("span");
+      const image = document.createElement("img");
+      image.src = URL.createObjectURL(file);
+      image.alt = `${kind}素材 ${index + 1}：${file.name}`;
+      item.appendChild(image);
+      preview.appendChild(item);
+    });
+  });
+  document.querySelector("#store-count").textContent = storeFiles.files.length || "+";
+  document.querySelector("#dish-count").textContent = dishFiles.files.length || "+";
+  if (storeFiles.files.length || dishFiles.files.length) status.textContent = `已选择 ${storeFiles.files.length} 张门店素材、${dishFiles.files.length} 张菜品素材。`;
 }
-stepButtons.forEach((button) => button.addEventListener("click", () => { if (Number(button.dataset.step) <= step) { step = Number(button.dataset.step); renderStep(); } }));
-uploadTrigger.addEventListener("click", () => fileInput.click());
-fileInput.addEventListener("change", () => {
-  preview.innerHTML = "";
-  Array.from(fileInput.files).slice(0, 8).forEach((file) => { const image = document.createElement("img"); image.src = URL.createObjectURL(file); image.alt = file.name; preview.appendChild(image); });
-  status.textContent = `已选择 ${fileInput.files.length} 张图片，确认后保存。`;
-});
-document.querySelector("#composer").addEventListener("submit", (event) => {
+document.querySelectorAll("[data-upload]").forEach((button) => button.addEventListener("click", () => (button.dataset.upload === "store" ? storeFiles : dishFiles).click()));
+storeFiles.addEventListener("change", renderAttachments);
+dishFiles.addEventListener("change", renderAttachments);
+
+composer.addEventListener("submit", (event) => {
   event.preventDefault();
-  if (step === 1 && !input.value.trim()) { input.focus(); status.textContent = "请先填写门店名称。"; return; }
-  if ((step === 2 || step === 3) && fileInput.files.length === 0) { uploadTrigger.focus(); status.textContent = "请先选择图片。"; return; }
-  if (step === 4 && !input.value.trim()) { input.focus(); status.textContent = "请先确认主推内容。"; return; }
-  if (step === 1) projectLabel.textContent = input.value.trim();
-  if (step < 4) { step += 1; fileInput.value = ""; renderStep(); status.className = "status success"; status.textContent = "已保存，继续下一步。"; }
-  else { status.className = "status success"; status.textContent = "事实已锁定。展示版不连接生图 API。"; sendLabel.textContent = "已完成展示"; document.querySelector(".send-button").disabled = true; }
+  if (!confirming) {
+    if (!nameInput.value.trim()) { nameInput.focus(); status.textContent = "请填写门店名称。"; return; }
+    if (!briefInput.value.trim()) { briefInput.focus(); status.textContent = "请写明门店定位、主推内容、价格和真实卖点。"; return; }
+    if (!storeFiles.files.length) { document.querySelector('[data-upload="store"]').focus(); status.textContent = "请添加至少一张门店素材。"; return; }
+    if (!dishFiles.files.length) { document.querySelector('[data-upload="dish"]').focus(); status.textContent = "请添加至少一张菜品或菜单素材。"; return; }
+    confirming = true;
+    projectLabel.textContent = nameInput.value.trim();
+    projectState.textContent = "资料已提交·正在确认事实";
+    stateBadge.classList.add("active");
+    stateBadge.querySelector("b").textContent = "事实确认中";
+    assistantTitle.textContent = "资料已经收到了，再确认最后一项";
+    assistantCopy.textContent = "所有信息仍在同一个对话框中处理，不会跳转页面。";
+    nameInput.disabled = true;
+    briefInput.value = "";
+    briefInput.placeholder = "本次团购首页最想主推哪道菜或哪个套餐？";
+    preview.replaceChildren();
+    document.querySelector(".composer-options").hidden = true;
+    sendLabel.textContent = "确认并锁定";
+    status.className = "status success";
+    status.textContent = "资料已一次性收集完成；仅在必要时继续补问事实。";
+    briefInput.focus();
+    return;
+  }
+  if (!briefInput.value.trim()) { briefInput.focus(); status.textContent = "请先补充这项真实信息。"; return; }
+  sendLabel.textContent = "已完成展示";
+  document.querySelector(".send-button").disabled = true;
+  briefInput.disabled = true;
+  stateBadge.querySelector("b").textContent = "资料已确认";
+  status.className = "status success";
+  status.textContent = "事实已锁定。展示版不连接任何 API，也不会上传文件。";
 });
 
 const menu = document.querySelector(".mobile-menu");
