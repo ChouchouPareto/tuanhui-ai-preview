@@ -370,6 +370,9 @@ input, select { min-height: 44px; width: 100%; padding: 0 12px; border: 1px soli
 .panelMiniTitle { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 11px; }
 .panelMiniTitle strong { font-size: 13px; }.panelMiniTitle small { color: #999; font-size: 9px; }
 .planCanvasSection { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: #fafafa; }
+.planCanvasToolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 11px; }
+.planCanvasToolbar .panelMiniTitle { min-width: 0; display: grid; gap: 2px; margin: 0; }
+.canvasControls { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
 .planCanvasViewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #d2d2d5 transparent; }
 .planCanvas { position: relative; min-width: 760px; aspect-ratio: 20 / 3; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: hidden; border: 1px solid #d7d7da; border-radius: 15px; background: #ededee; box-shadow: 0 10px 30px rgba(0,0,0,.06); }
 .planCanvas button { position: relative; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 2px; padding: 12px; overflow: hidden; border: 0; border-right: 1px dashed rgba(255,255,255,.66); background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background-color .18s ease, box-shadow .18s ease; }
@@ -399,8 +402,6 @@ input, select { min-height: 44px; width: 100%; padding: 0 12px; border: 1px soli
 .guardrailDisclosure ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; margin: 0; padding: 0 0 2px 16px; color: #777; font-size: 9px; }
 .designPlanActions { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-top: 12px; }
 .designPlanActions > p { display: flex; align-items: center; gap: 7px; margin: 0; color: #777; font-size: 10px; }
-.planActionCluster { display: flex; align-items: center; gap: 8px; }
-.planActionCluster > .primaryButton { min-height: 50px; white-space: nowrap; }
 .planDropdown { position: relative; width: 150px; flex: 0 0 auto; }
 .planDropdown > summary { min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 12px; border: 1px solid #d9d9dc; border-radius: 13px; background: white; cursor: pointer; list-style: none; transition: border-color .18s ease, background-color .18s ease; }
 .planDropdown > summary::-webkit-details-marker { display: none; }
@@ -410,7 +411,13 @@ input, select { min-height: 44px; width: 100%; padding: 0 12px; border: 1px soli
 .planDropdown > summary b { overflow: hidden; margin-top: 3px; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .planDropdown > summary > i { width: 7px; height: 7px; flex: 0 0 auto; border-right: 1.5px solid #777; border-bottom: 1.5px solid #777; transform: rotate(45deg) translateY(-2px); transition: transform .18s ease; }
 .planDropdown[open] > summary > i { transform: rotate(225deg) translate(-2px,-1px); }
-.planDropdownMenu { position: absolute; z-index: 24; right: 0; bottom: calc(100% + 8px); width: 230px; display: grid; gap: 3px; padding: 6px; border: 1px solid #dedee1; border-radius: 14px; background: white; box-shadow: 0 18px 44px rgba(0,0,0,.14); }
+.planDropdown.compact { width: 138px; }
+.planDropdown.compact > summary { min-height: 42px; padding: 7px 10px; border-color: #e1e1e3; border-radius: 10px; }
+.planDropdown.compact > summary > span { display: flex; align-items: baseline; gap: 6px; }
+.planDropdown.compact > summary small { flex: 0 0 auto; }
+.planDropdown.compact > summary b { margin-top: 0; }
+.planDropdownMenu { position: absolute; z-index: 24; top: calc(100% + 7px); left: 0; width: 230px; display: grid; gap: 3px; padding: 6px; border: 1px solid #dedee1; border-radius: 14px; background: white; box-shadow: 0 18px 44px rgba(0,0,0,.14); }
+.canvasControls .planDropdown:last-child .planDropdownMenu { right: 0; left: auto; }
 .planDropdownMenu button { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 0; border-radius: 9px; background: transparent; text-align: left; cursor: pointer; }
 .planDropdownMenu button:hover:not(:disabled), .planDropdownMenu button.active { background: #f1f1f2; }
 .planDropdownMenu button > span { min-width: 0; display: grid; }
@@ -497,7 +504,6 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .inlineCategory { border-left: 0; }
   .categoryMenu { right: auto; left: 0; }
   .designPlanActions { align-items: flex-start; flex-direction: column; }
-  .planActionCluster { width: 100%; justify-content: flex-end; }
 }
 @media (max-width: 760px) {
   body { font-size: 16px; }
@@ -532,9 +538,7 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .canvasInspector { grid-template-columns: 110px minmax(0, 1fr); }
   .canvasRatio { display: none; }
   .designPlanActions { align-items: stretch; display: grid; }
-  .planActionCluster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .planDropdown { width: auto; min-width: 0; }
-  .planActionCluster > .primaryButton { grid-column: 1 / -1; width: 100%; }
+  .designPlanActions > .primaryButton { width: 100%; }
   .generationIntro { align-items: flex-start; flex-wrap: wrap; }.generationButton { width: 100%; }
   .sliceResults { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .uploadHeader, .sectionHeading { display: grid; }
@@ -568,9 +572,11 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .modeTabs button span { display: none; }
   .designPlanHeader { display: grid; }.planVersion { justify-self: start; }
   .planCanvasSection { padding: 12px; }
-  .planActionCluster { grid-template-columns: 1fr; }
-  .planActionCluster > .primaryButton { grid-column: auto; }
+  .planCanvasToolbar { align-items: stretch; flex-direction: column; }
+  .canvasControls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .planDropdown.compact { width: auto; min-width: 0; }
   .planDropdownMenu { right: auto; left: 0; width: min(230px, calc(100vw - 64px)); }
+  .canvasControls .planDropdown:last-child .planDropdownMenu { right: 0; left: auto; }
   .guardrailDisclosure ul { grid-template-columns: 1fr; }
   .workbenchTop { padding: 0 18px; }
   .dropzone { min-height: 150px; }
