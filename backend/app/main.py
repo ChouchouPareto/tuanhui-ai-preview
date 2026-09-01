@@ -1,0 +1,35 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.api import router
+from app.core.config import settings
+from app.core.database import Base, engine
+from app.core.database import SessionLocal
+from app.services.analysis import recover_analysis_tasks
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(engine)
+    with SessionLocal() as db:
+        recover_analysis_tasks(db)
+    yield
+
+
+app = FastAPI(title="团绘AI Stage 3 API", version="0.4.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=[item.strip() for item in settings.allowed_origins.split(",")], allow_methods=["*"], allow_headers=["*"])
+app.include_router(router)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "stage": "3", "default_flow": "dialogue", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception(request: Request, exc: Exception):
+    request_id = request.headers.get("x-request-id", "unknown")
+    return JSONResponse(status_code=500, content={"error": {"code": "INTERNAL_ERROR", "message": "服务暂时不可用", "request_id": request_id}})
