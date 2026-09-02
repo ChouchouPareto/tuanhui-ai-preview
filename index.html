@@ -13,7 +13,9 @@
   <aside class="sidebar" aria-label="主导航">
     <a class="brand" href="#main" aria-label="团绘AI首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>团绘AI</strong><small>TUANHUI AI</small></span></a>
     <nav>
-      <button class="nav-item active" type="button" data-view="conversation">对话创作<em>NEW</em></button>
+      <button class="nav-item active" type="button" data-view="conversation">创作</button>
+      <button class="nav-item" type="button" disabled>一键生图<em>NEW</em></button>
+      <button class="nav-item" type="button" disabled>营销方案</button>
       <button class="nav-item" type="button" data-view="professional">专业创作</button>
       <button class="nav-item" type="button" disabled>我的项目<small>待接入</small></button>
       <button class="nav-item" type="button" disabled>素材库</button>
@@ -31,14 +33,16 @@
           <form class="composer" id="composer">
             <label class="name-field" for="store-name"><span>门店名称</span><input id="store-name" autocomplete="organization" placeholder="例如：山城酸菜鱼"></label>
             <label class="sr-only" for="main-input">本次创作需求</label>
-            <textarea id="main-input" rows="6" placeholder="把本次创作需要的信息一次告诉我，例如：&#10;门店定位：川渝江湖菜&#10;主推菜品或套餐：酸菜鱼双人餐&#10;真实价格：99 元&#10;真实卖点：活鱼现做，酸香开胃"></textarea>
+            <textarea id="main-input" rows="6" placeholder="描述你想要的团购设计，并补充真实信息，例如：&#10;门店定位：川渝江湖菜　主推套餐：酸菜鱼双人餐&#10;真实价格：99 元　真实卖点：活鱼现做，酸香开胃"></textarea>
             <div class="attachment-preview" id="attachment-preview" aria-live="polite"></div>
-            <div class="composer-actions"><div class="composer-options"><button class="attach-button" type="button" data-upload="store">门店素材 <b id="store-count">+</b></button><button class="attach-button" type="button" data-upload="dish">菜品素材 <b id="dish-count">+</b></button><details class="category-select"><summary><span><small>门店类型</small><b>餐饮美食</b></span><i aria-hidden="true"></i></summary><div><button type="button"><span><b>餐饮美食</b><small>当前可用</small></span><strong>✓</strong></button><button type="button" disabled><span><b>休闲娱乐</b><small>暂未开放</small></span></button><button type="button" disabled><span><b>丽人健身</b><small>暂未开放</small></span></button></div></details></div><button class="send-button" type="submit"><span id="send-label">提交全部资料</span><b aria-hidden="true">→</b></button></div>
+            <div class="composer-actions"><div class="composer-options"><button class="attach-button" type="button" data-upload="store">门店素材 <b id="store-count">+</b></button><button class="attach-button" type="button" data-upload="dish">菜品素材 <b id="dish-count">+</b></button><details class="category-select"><summary><span><small>门店类型</small><b>餐饮美食</b></span><i aria-hidden="true"></i></summary><div><button type="button"><span><b>餐饮美食</b><small>当前可用</small></span><strong>✓</strong></button><button type="button" disabled><span><b>休闲娱乐</b><small>暂未开放</small></span></button><button type="button" disabled><span><b>丽人健身</b><small>暂未开放</small></span></button></div></details></div><button class="send-button" type="submit" aria-label="提交全部资料" title="提交全部资料"><span class="sr-only" id="send-label">提交全部资料</span><b aria-hidden="true">→</b></button></div>
             <input id="store-files" type="file" accept="image/*" multiple hidden><input id="dish-files" type="file" accept="image/*" multiple hidden>
           </form>
         </div>
       </section>
       <footer class="status inline-status" id="status">一次提交后自动整理；只有缺少必要事实时，才会继续在这里追问。</footer>
+      <section class="suggestions"><header><h2>推荐能力</h2><span>全部</span></header><div><article><i>01</i><b>团购首页五图</b><small>20:3 长图排版</small><span>↗</span></article><article><i>02</i><b>Logo 设计</b><small>品牌标识与单体图形</small><span>↗</span></article><article><i>03</i><b>品牌介绍图</b><small>门店故事与品牌卖点</small><span>↗</span></article></div></section>
+      <section class="highlights"><h2>亮点功能</h2><div><article class="five"><span><i></i><i></i><i></i><i></i><i></i></span><h3>团购首页五图</h3><p>一张长画布设计，自动裁切五张图片</p></article><article class="logo-card"><span><i></i><i></i><i></i></span><h3>Logo 设计</h3><p>根据门店名称与定位生成品牌标识</p></article><article class="brand-card"><span><i></i><b>BRAND</b></span><h3>品牌介绍图</h3><p>整合品牌故事、特色菜品和真实卖点</p></article><article class="plan-card"><span><i></i><i></i><i></i></span><h3>营销方案</h3><p>围绕团购卖点规划活动表达</p></article></div></section>
     </section>
 
     <section class="view" id="professional-view">

@@ -8,6 +8,7 @@ const dishFiles = document.querySelector("#dish-files");
 const preview = document.querySelector("#attachment-preview");
 const status = document.querySelector("#status");
 const sendLabel = document.querySelector("#send-label");
+const sendButton = document.querySelector(".send-button");
 let confirming = false;
 
 function setView(name) {
@@ -53,6 +54,8 @@ composer.addEventListener("submit", (event) => {
     preview.replaceChildren();
     document.querySelector(".composer-options").hidden = true;
     sendLabel.textContent = "确认并锁定";
+    sendButton.setAttribute("aria-label", "确认并锁定事实");
+    sendButton.title = "确认并锁定事实";
     status.className = "status inline-status success";
     status.textContent = "资料已一次性收集完成；仅在必要时继续补问事实。";
     briefInput.focus();
@@ -60,7 +63,9 @@ composer.addEventListener("submit", (event) => {
   }
   if (!briefInput.value.trim()) { briefInput.focus(); status.textContent = "请先补充这项真实信息。"; return; }
   sendLabel.textContent = "已完成展示";
-  document.querySelector(".send-button").disabled = true;
+  sendButton.setAttribute("aria-label", "展示流程已完成");
+  sendButton.title = "展示流程已完成";
+  sendButton.disabled = true;
   briefInput.disabled = true;
   status.className = "status inline-status success";
   status.textContent = "事实已锁定。展示版不连接任何 API，也不会上传文件。";
