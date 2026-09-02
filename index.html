@@ -25,11 +25,9 @@
     <header class="topbar"><div class="notice"><b>NEW</b><span>团绘AI 对话创作版</span><small>先确认事实，再进入成图</small></div><span class="token"><i></i>展示模式·0 Token</span></header>
 
     <section class="view active" id="conversation-view">
-      <header class="hero"><span>团绘店长·对话创作</span><h1>一次发齐资料，直接开始创作</h1><p>门店信息、门店素材和菜品素材都放进同一个对话框。</p></header>
-      <div class="product-tabs" role="tablist"><button class="active" type="button">团购首页五图</button><button type="button" disabled>Logo 设计</button><button type="button" disabled>品牌介绍图</button></div>
+      <header class="agent-heading"><span aria-hidden="true">和</span><div class="product-tabs" role="tablist" aria-label="创作模式"><button class="active" type="button" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>营销方案</button></div><h1>Agent 一起聊聊创作想法</h1></header>
       <section class="chat-workbench">
-        <header class="workbench-head"><div class="project-name"><span class="mini-logo" aria-hidden="true"></span><span><b id="project-label">新建门店项目</b><small id="project-state">统一资料入口</small></span></div><span class="collection-state"><i></i><b>等待资料</b></span></header>
-        <div class="thread"><div class="assistant"><span class="assistant-logo" aria-hidden="true"></span><div><strong id="assistant-title">把这家店的资料一次发给我</strong><p id="assistant-copy">写清门店定位、主推内容、价格和真实卖点，同时附上门店与菜品图片。</p></div></div>
+        <div class="thread">
           <form class="composer" id="composer">
             <label class="name-field" for="store-name"><span>门店名称</span><input id="store-name" autocomplete="organization" placeholder="例如：山城酸菜鱼"></label>
             <label class="sr-only" for="main-input">本次创作需求</label>
@@ -39,9 +37,8 @@
             <input id="store-files" type="file" accept="image/*" multiple hidden><input id="dish-files" type="file" accept="image/*" multiple hidden>
           </form>
         </div>
-        <footer class="status" id="status">一次提交后自动整理；只有缺少必要事实时，才会继续在这里追问。</footer>
       </section>
-      <section class="principles"><article><b>素材直接发</b><p>门店图和菜品图都附着在当前对话里。</p></article><article><b>缺什么再问</b><p>只追问生成必需的门店事实。</p></article><article><b>确认后才生成</b><p>事实和费用节点都保留人工确认。</p></article></section>
+      <footer class="status inline-status" id="status">一次提交后自动整理；只有缺少必要事实时，才会继续在这里追问。</footer>
     </section>
 
     <section class="view" id="professional-view">
