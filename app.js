@@ -1,15 +1,12 @@
 const views = document.querySelectorAll(".view");
 const navItems = document.querySelectorAll("[data-view]");
-const composer = document.querySelector("#composer");
-const nameInput = document.querySelector("#store-name");
-const briefInput = document.querySelector("#main-input");
-const storeFiles = document.querySelector("#store-files");
-const dishFiles = document.querySelector("#dish-files");
-const preview = document.querySelector("#attachment-preview");
 const status = document.querySelector("#status");
-const sendLabel = document.querySelector("#send-label");
-const sendButton = document.querySelector(".send-button");
-let confirming = false;
+const quickStoreFiles = document.querySelector("#quick-store-files");
+const quickDishFiles = document.querySelector("#quick-dish-files");
+const modal = document.querySelector("#asset-modal");
+const modalTitle = document.querySelector("#asset-modal-title");
+const modalContent = document.querySelector("#modal-content");
+let activePicker = "store";
 
 function setView(name) {
   views.forEach((view) => view.classList.toggle("active", view.id === `${name}-view`));
@@ -19,56 +16,110 @@ function setView(name) {
 }
 navItems.forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
 
-function renderAttachments() {
+function filesFor(kind) { return kind === "store" ? quickStoreFiles : quickDishFiles; }
+function renderQuickAsset(kind) {
+  const input = filesFor(kind);
+  const preview = document.querySelector(`#quick-${kind}-preview`);
+  const count = document.querySelector(`#quick-${kind}-count`);
   preview.replaceChildren();
-  [["门店", storeFiles.files], ["菜品", dishFiles.files]].forEach(([kind, files]) => {
-    Array.from(files).slice(0, 10).forEach((file, index) => {
-      const item = document.createElement("span");
-      const image = document.createElement("img");
-      image.src = URL.createObjectURL(file);
-      image.alt = `${kind}素材 ${index + 1}：${file.name}`;
-      item.appendChild(image);
-      preview.appendChild(item);
-    });
-  });
-  document.querySelector("#store-count").textContent = storeFiles.files.length || "+";
-  document.querySelector("#dish-count").textContent = dishFiles.files.length || "+";
-  if (storeFiles.files.length || dishFiles.files.length) status.textContent = `已选择 ${storeFiles.files.length} 张门店素材、${dishFiles.files.length} 张菜品素材。`;
+  if (input.files.length) {
+    const image = document.createElement("img");
+    image.src = URL.createObjectURL(input.files[0]);
+    image.alt = kind === "store" ? "门店素材预览" : "菜品素材预览";
+    preview.appendChild(image);
+    count.textContent = `${input.files.length} 张`;
+  } else {
+    preview.textContent = "＋";
+    count.textContent = "添加";
+  }
 }
-document.querySelectorAll("[data-upload]").forEach((button) => button.addEventListener("click", () => (button.dataset.upload === "store" ? storeFiles : dishFiles).click()));
-document.querySelector(".category-select > div button:not(:disabled)").addEventListener("click", () => document.querySelector(".category-select").removeAttribute("open"));
-storeFiles.addEventListener("change", renderAttachments);
-dishFiles.addEventListener("change", renderAttachments);
-
-composer.addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (!confirming) {
-    if (!nameInput.value.trim()) { nameInput.focus(); status.textContent = "请填写门店名称。"; return; }
-    if (!briefInput.value.trim()) { briefInput.focus(); status.textContent = "请写明门店定位、主推内容、价格和真实卖点。"; return; }
-    if (!storeFiles.files.length) { document.querySelector('[data-upload="store"]').focus(); status.textContent = "请添加至少一张门店素材。"; return; }
-    if (!dishFiles.files.length) { document.querySelector('[data-upload="dish"]').focus(); status.textContent = "请添加至少一张菜品或菜单素材。"; return; }
-    confirming = true;
-    nameInput.disabled = true;
-    briefInput.value = "";
-    briefInput.placeholder = "本次团购首页最想主推哪道菜或哪个套餐？";
-    preview.replaceChildren();
-    document.querySelector(".composer-options").hidden = true;
-    sendLabel.textContent = "确认并锁定";
-    sendButton.setAttribute("aria-label", "确认并锁定事实");
-    sendButton.title = "确认并锁定事实";
-    status.className = "status inline-status success";
-    status.textContent = "资料已一次性收集完成；仅在必要时继续补问事实。";
-    briefInput.focus();
+function renderModal() {
+  const input = filesFor(activePicker);
+  modalTitle.textContent = activePicker === "store" ? "门店素材" : "菜品素材";
+  modalContent.replaceChildren();
+  if (!input.files.length) {
+    const empty = document.createElement("p");
+    empty.textContent = `暂无${activePicker === "store" ? "门店" : "菜品"}素材，点击“新增”选择图片`;
+    modalContent.appendChild(empty);
     return;
   }
-  if (!briefInput.value.trim()) { briefInput.focus(); status.textContent = "请先补充这项真实信息。"; return; }
-  sendLabel.textContent = "已完成展示";
-  sendButton.setAttribute("aria-label", "展示流程已完成");
-  sendButton.title = "展示流程已完成";
-  sendButton.disabled = true;
-  briefInput.disabled = true;
+  const grid = document.createElement("div");
+  grid.className = "modal-grid";
+  Array.from(input.files).forEach((file, index) => {
+    const card = document.createElement("article");
+    const image = document.createElement("img");
+    image.src = URL.createObjectURL(file);
+    image.alt = `素材 ${index + 1}`;
+    const label = document.createElement("span");
+    label.textContent = file.name;
+    card.append(image, label);
+    grid.appendChild(card);
+  });
+  modalContent.appendChild(grid);
+}
+function openPicker(kind) {
+  activePicker = kind;
+  renderModal();
+  modal.hidden = false;
+  modal.querySelector("[data-modal-close]").focus();
+}
+document.querySelectorAll("[data-picker]").forEach((button) => button.addEventListener("click", () => openPicker(button.dataset.picker)));
+document.querySelector("#modal-add").addEventListener("click", () => filesFor(activePicker).click());
+document.querySelectorAll("[data-modal-close]").forEach((button) => button.addEventListener("click", () => { modal.hidden = true; }));
+modal.addEventListener("mousedown", (event) => { if (event.target === modal) modal.hidden = true; });
+[quickStoreFiles, quickDishFiles].forEach((input, index) => input.addEventListener("change", () => { const kind = index ? "dish" : "store"; renderQuickAsset(kind); renderModal(); }));
+
+document.querySelectorAll(".quick-menu > div button").forEach((button) => button.addEventListener("click", () => {
+  const menu = button.closest("details");
+  menu.querySelectorAll("button").forEach((item) => item.classList.toggle("active", item === button));
+  menu.querySelector("summary b").textContent = button.textContent;
+  menu.removeAttribute("open");
+}));
+document.querySelector(".canvas-switch").addEventListener("click", (event) => {
+  const button = event.currentTarget;
+  const active = button.classList.toggle("active");
+  button.setAttribute("aria-pressed", String(active));
+});
+document.querySelector("#quick-composer").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const brief = document.querySelector("#quick-input");
+  const error = document.querySelector("#quick-error");
+  const fail = (text, target) => { error.hidden = false; error.textContent = text; target?.focus(); };
+  if (!brief.value.trim()) return fail("请先描述门店名称、主推内容、价格和真实卖点。", brief);
+  if (!/(?:门店名称|店名|门店)\s*[：:]/.test(brief.value)) return fail("请在文字中写明“门店名称：×××”。", brief);
+  if (!quickStoreFiles.files.length) return fail("请添加至少一张门店素材。", document.querySelector('[data-picker="store"]'));
+  if (!quickDishFiles.files.length) return fail("请添加至少一张菜品或菜单素材。", document.querySelector('[data-picker="dish"]'));
+  error.hidden = true;
   status.className = "status inline-status success";
-  status.textContent = "事实已锁定。展示版不连接任何 API，也不会上传文件。";
+  status.textContent = "资料已收集完成。展示版不会调用 API，也不会上传文件。";
+});
+
+function renderProAttachments() {
+  const preview = document.querySelector("#pro-preview");
+  preview.replaceChildren();
+  [["store", "门店"], ["dish", "菜品"]].forEach(([kind, label]) => {
+    const input = document.querySelector(`#pro-${kind}-files`);
+    document.querySelector(`#pro-${kind}-count`).textContent = input.files.length || "+";
+    Array.from(input.files).slice(0, 10).forEach((file, index) => {
+      const image = document.createElement("img");
+      image.src = URL.createObjectURL(file);
+      image.alt = `${label}素材 ${index + 1}`;
+      preview.appendChild(image);
+    });
+  });
+}
+document.querySelectorAll("[data-pro-upload]").forEach((button) => button.addEventListener("click", () => document.querySelector(`#pro-${button.dataset.proUpload}-files`).click()));
+document.querySelector("#pro-store-files").addEventListener("change", renderProAttachments);
+document.querySelector("#pro-dish-files").addEventListener("change", renderProAttachments);
+document.querySelector("#pro-composer").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = document.querySelector("#pro-store-name");
+  const brief = document.querySelector("#pro-main-input");
+  const proStatus = document.querySelector("#pro-status");
+  if (!name.value.trim()) { name.focus(); proStatus.textContent = "请填写门店名称。"; return; }
+  if (!brief.value.trim()) { brief.focus(); proStatus.textContent = "请补充本次创作需求。"; return; }
+  proStatus.className = "status inline-status success";
+  proStatus.textContent = "专业资料已保存。展示版不会调用 API。";
 });
 
 const menu = document.querySelector(".mobile-menu");

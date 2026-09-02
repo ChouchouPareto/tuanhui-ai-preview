@@ -28,28 +28,29 @@
 
     <section class="view active" id="conversation-view">
       <header class="agent-heading"><div class="product-tabs" role="tablist" aria-label="创作模式"><button class="active" type="button" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>营销方案</button></div><h1>让每家门店，都有一套会成交的设计</h1></header>
-      <section class="chat-workbench">
-        <div class="thread">
-          <form class="composer" id="composer">
-            <label class="name-field" for="store-name"><span>门店名称</span><input id="store-name" autocomplete="organization" placeholder="例如：山城酸菜鱼"></label>
-            <label class="sr-only" for="main-input">本次创作需求</label>
-            <textarea id="main-input" rows="5" placeholder="描述你想要的团购设计，并补充真实信息。例如：门店定位是川渝江湖菜；主推酸菜鱼双人餐；真实价格 99 元；真实卖点是活鱼现做、酸香开胃。"></textarea>
-            <div class="attachment-preview" id="attachment-preview" aria-live="polite"></div>
-            <div class="composer-actions"><div class="composer-options"><button class="attach-button" type="button" data-upload="store">门店素材 <b id="store-count">+</b></button><button class="attach-button" type="button" data-upload="dish">菜品素材 <b id="dish-count">+</b></button><details class="category-select"><summary><span><small>门店类型</small><b>餐饮美食</b></span><i aria-hidden="true"></i></summary><div><button type="button"><span><b>餐饮美食</b><small>当前可用</small></span><strong>✓</strong></button><button type="button" disabled><span><b>休闲娱乐</b><small>暂未开放</small></span></button><button type="button" disabled><span><b>丽人健身</b><small>暂未开放</small></span></button></div></details></div><button class="send-button" type="submit" aria-label="提交全部资料" title="提交全部资料"><span class="sr-only" id="send-label">提交全部资料</span><b aria-hidden="true">→</b></button></div>
-            <input id="store-files" type="file" accept="image/*" multiple hidden><input id="dish-files" type="file" accept="image/*" multiple hidden>
-          </form>
-        </div>
-      </section>
-      <footer class="status inline-status" id="status">一次提交后自动整理；只有缺少必要事实时，才会继续在这里追问。</footer>
+      <form class="quick-composer" id="quick-composer">
+        <div class="quick-body"><div class="quick-assets"><button class="quick-asset" type="button" data-picker="store"><em>门店</em><span class="quick-preview" id="quick-store-preview">＋</span><b>门店素材</b><small id="quick-store-count">添加</small></button><button class="quick-asset" type="button" data-picker="dish"><em>菜品</em><span class="quick-preview" id="quick-dish-preview">＋</span><b>菜单、菜品图</b><small id="quick-dish-count">添加</small></button></div><label class="quick-prompt"><span class="sr-only">创作需求</span><textarea id="quick-input" placeholder="写清门店名称、定位、主推套餐、真实价格和卖点，团绘AI会补全设计方案。例如：门店名称：山城酸菜鱼；主推酸菜鱼双人餐，99元；活鱼现做，酸香开胃。"></textarea></label></div>
+        <div class="quick-toolbar"><div class="quick-start"><button type="button" class="round-tool" data-picker="store" aria-label="添加门店素材">＋</button><button type="button" class="round-tool" data-picker="dish" aria-label="添加菜品素材">＠</button></div><div class="quick-menus">
+          <details class="quick-menu"><summary><small>模型</small><b>千问（默认）</b><i></i></summary><div><button type="button" class="active">千问（默认）</button><button type="button">豆包（失败兜底）</button></div></details>
+          <details class="quick-menu"><summary><small>风格</small><b>智能匹配</b><i></i></summary><div><button type="button" class="active">智能匹配</button><button type="button">食欲冲击</button><button type="button">品牌质感</button><button type="button">烟火市井</button><button type="button">清爽简约</button></div></details>
+          <details class="quick-menu"><summary><small>布局</small><b>内容均衡</b><i></i></summary><div><button type="button" class="active">内容均衡</button><button type="button">爆款主图</button><button type="button">品牌叙事</button><button type="button">套餐对比</button></div></details>
+          <details class="quick-menu"><summary><small>模板</small><b>经典五图</b><i></i></summary><div><button type="button" class="active">经典五图</button><button type="button">主菜聚焦</button><button type="button">门店故事</button><button type="button">到店转化</button></div></details>
+          <details class="preference-menu"><summary><span>✦</span><b>智能匹配</b><small>创作偏好</small><i></i></summary><div><nav><button class="active" type="button">图片偏好</button><button type="button">推理模型</button></nav><section><div><small>输出画布</small><b>20:3 团购五联长图</b><p>生成后自动裁切为五张 4:3 图片</p></div><strong>20:3</strong></section></div></details>
+        </div><div class="quick-end"><button class="canvas-switch active" type="button" aria-pressed="true"><i></i>画布</button><button class="quick-send" type="submit" aria-label="提交创作需求">→</button></div></div>
+        <p class="quick-error" id="quick-error" role="alert" hidden></p>
+        <input id="quick-store-files" type="file" accept="image/*" multiple hidden><input id="quick-dish-files" type="file" accept="image/*" multiple hidden>
+      </form>
+      <footer class="status inline-status" id="status">把门店资料和创作要求一次发给我。</footer>
       <section class="suggestions"><header><h2>推荐能力</h2><span>全部</span></header><div><article><i>01</i><b>团购首页五图</b><small>20:3 长图排版</small><span>↗</span></article><article><i>02</i><b>Logo 设计</b><small>品牌标识与单体图形</small><span>↗</span></article><article><i>03</i><b>品牌介绍图</b><small>门店故事与品牌卖点</small><span>↗</span></article></div></section>
       <section class="highlights"><h2>亮点功能</h2><div><article class="five"><span><i></i><i></i><i></i><i></i><i></i></span><h3>团购首页五图</h3><p>一张长画布设计，自动裁切五张图片</p></article><article class="logo-card"><span><i></i><i></i><i></i></span><h3>Logo 设计</h3><p>根据门店名称与定位生成品牌标识</p></article><article class="brand-card"><span><i></i><b>BRAND</b></span><h3>品牌介绍图</h3><p>整合品牌故事、特色菜品和真实卖点</p></article><article class="plan-card"><span><i></i><i></i><i></i></span><h3>营销方案</h3><p>围绕团购卖点规划活动表达</p></article></div></section>
     </section>
 
     <section class="view" id="professional-view">
-      <header class="hero compact"><span>专业创作</span><h1>按步骤精细检查每项资料</h1><p>保留原来的四步页面逻辑，适合代运营和需要严格核对的用户。</p></header>
-      <section class="professional-card"><header><b>门店视觉包</b><div class="steps static"><button class="active" type="button"><i>1</i>门店信息</button><button type="button"><i>2</i>门店素材</button><button type="button"><i>3</i>菜品素材</button><button type="button"><i>4</i>确认事实</button></div></header><div class="professional-body"><div><span class="big-icon">□</span><small>门店项目</small><h2>今天要为哪家店创作？</h2><p>填写门店名称并选择分类，先建立这次设计任务。</p></div><div class="professional-input"><span>例如：山城酸菜鱼</span><button type="button">创建项目 →</button></div></div></section>
+      <header class="agent-heading"><div class="product-tabs" role="tablist"><button class="active" type="button">专业创作</button></div><h1>把资料逐项核对，再进入成图</h1></header>
+      <section class="chat-workbench"><div class="thread"><form class="composer" id="pro-composer"><label class="name-field"><span>门店名称</span><input id="pro-store-name" placeholder="例如：山城酸菜鱼"></label><label class="sr-only" for="pro-main-input">本次创作需求</label><textarea id="pro-main-input" placeholder="描述门店定位、主推套餐、真实价格和真实卖点。"></textarea><div class="attachment-preview" id="pro-preview"></div><div class="composer-actions"><div class="composer-options"><button class="attach-button" type="button" data-pro-upload="store">门店素材 <b id="pro-store-count">+</b></button><button class="attach-button" type="button" data-pro-upload="dish">菜品素材 <b id="pro-dish-count">+</b></button><details class="category-select"><summary><span><small>门店类型</small><b>餐饮美食</b></span><i></i></summary><div><button type="button"><span><b>餐饮美食</b><small>当前可用</small></span><strong>✓</strong></button><button type="button" disabled><span><b>休闲娱乐</b><small>暂未开放</small></span></button></div></details></div><button class="send-button" type="submit" aria-label="提交全部资料">→</button></div><input id="pro-store-files" type="file" accept="image/*" multiple hidden><input id="pro-dish-files" type="file" accept="image/*" multiple hidden></form></div></section><footer class="status inline-status" id="pro-status">专业创作会逐项检查门店、菜品与事实资料。</footer>
     </section>
   </main>
+  <div class="asset-modal" id="asset-modal" hidden><section role="dialog" aria-modal="true" aria-labelledby="asset-modal-title"><header><h2 id="asset-modal-title">门店素材</h2><button type="button" data-modal-close aria-label="关闭">×</button></header><div class="modal-tools"><button type="button">↕ 倒序</button><div><button type="button" id="modal-add">＋ 新增</button><label><span class="sr-only">搜索素材</span><input placeholder="搜索"></label></div></div><div class="modal-content" id="modal-content"><p>暂无素材，点击“新增”选择图片</p></div><footer><button type="button" data-modal-close>取消</button><button type="button" class="primary" data-modal-close>添加</button></footer></section></div>
   <script src="app.js"></script>
 </body>
 </html>
