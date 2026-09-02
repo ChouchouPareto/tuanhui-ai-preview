@@ -33,7 +33,7 @@
           <form class="composer" id="composer">
             <label class="name-field" for="store-name"><span>门店名称</span><input id="store-name" autocomplete="organization" placeholder="例如：山城酸菜鱼"></label>
             <label class="sr-only" for="main-input">本次创作需求</label>
-            <textarea id="main-input" rows="6" placeholder="描述你想要的团购设计，并补充真实信息，例如：&#10;门店定位：川渝江湖菜　主推套餐：酸菜鱼双人餐&#10;真实价格：99 元　真实卖点：活鱼现做，酸香开胃"></textarea>
+            <textarea id="main-input" rows="5" placeholder="描述你想要的团购设计，并补充真实信息。例如：门店定位是川渝江湖菜；主推酸菜鱼双人餐；真实价格 99 元；真实卖点是活鱼现做、酸香开胃。"></textarea>
             <div class="attachment-preview" id="attachment-preview" aria-live="polite"></div>
             <div class="composer-actions"><div class="composer-options"><button class="attach-button" type="button" data-upload="store">门店素材 <b id="store-count">+</b></button><button class="attach-button" type="button" data-upload="dish">菜品素材 <b id="dish-count">+</b></button><details class="category-select"><summary><span><small>门店类型</small><b>餐饮美食</b></span><i aria-hidden="true"></i></summary><div><button type="button"><span><b>餐饮美食</b><small>当前可用</small></span><strong>✓</strong></button><button type="button" disabled><span><b>休闲娱乐</b><small>暂未开放</small></span></button><button type="button" disabled><span><b>丽人健身</b><small>暂未开放</small></span></button></div></details></div><button class="send-button" type="submit" aria-label="提交全部资料" title="提交全部资料"><span class="sr-only" id="send-label">提交全部资料</span><b aria-hidden="true">→</b></button></div>
             <input id="store-files" type="file" accept="image/*" multiple hidden><input id="dish-files" type="file" accept="image/*" multiple hidden>
