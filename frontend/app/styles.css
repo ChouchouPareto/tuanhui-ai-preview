@@ -167,7 +167,8 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .conversationStage .factSummaryDisclosure { margin-top: 12px; }
 .singleConversationComposer { overflow: visible; border: 1px solid #dcdcdf; border-radius: 22px; background: #fbfbfc; box-shadow: 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease; }
 .singleConversationComposer:focus-within { border-color: #b9b9bc; box-shadow: 0 0 0 3px rgba(0,0,0,.035); }
-.conversationNameField { min-height: 58px; display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; padding: 0 20px; border-bottom: 1px solid #e8e8ea; }
+.conversationNameField { min-height: 58px; display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; padding: 0 20px; border-bottom: 1px solid #e8e8ea; border-radius: 21px 21px 0 0; transition: background-color .18s ease, box-shadow .18s ease; }
+.conversationNameField:focus-within { background: #f7f7f8; box-shadow: inset 3px 0 0 #68686b; }
 .conversationNameField > span { color: #777; font-size: 11px; font-weight: 650; }
 .conversationNameField input { min-height: 57px; padding: 0; border: 0; outline: 0; background: transparent; font-size: 15px; font-weight: 650; }
 .conversationNameField input:disabled { color: var(--ink); opacity: 1; }
@@ -551,6 +552,7 @@ input, select { min-height: 44px; width: 100%; padding: 0 12px; border: 1px soli
 .guideGrid p { margin: 0; color: #858585; font-size: 12px; }
 input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible, a:focus-visible, .dropzone:focus-within { outline: 2px solid rgba(17,17,17,.48); outline-offset: 2px; }
 .inputAction > input:focus-visible { outline: 0; }
+.conversationNameField input:focus-visible { outline: 0; outline-offset: 0; }
 .brand:focus-visible { border-radius: 8px; }
 .assistantAvatar .brandSymbol { width: 24px; height: 14px; color: var(--black); }
 .sidebarScrim { display: none; }
