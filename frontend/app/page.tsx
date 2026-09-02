@@ -277,7 +277,7 @@ function ConversationIntake({ projectName, assets, busy, onSubmit }: { projectNa
 
 function ConversationWorkbench({ projectName, message, messageTone, taskId, collectingFacts, children }: { projectName: string; message: string; messageTone: "info" | "success" | "error"; taskId: string; collectingFacts: boolean; children: ReactNode }) {
   return <section className="conversationHome" aria-labelledby="conversation-title">
-    <header className="creationAgentHeader"><span className="agentConjunction" aria-hidden="true">和</span><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled title="一键生图将在后续版本开放">一键生图</button><button type="button" role="tab" aria-selected="false" disabled title="营销方案将在后续版本开放">营销方案</button></div><h1 id="conversation-title">Agent 一起聊聊创作想法</h1></header>
+    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled title="一键生图将在后续版本开放">一键生图</button><button type="button" role="tab" aria-selected="false" disabled title="营销方案将在后续版本开放">营销方案</button></div><h1 id="conversation-title">让每家门店，都有一套会成交的设计</h1></header>
     <section className="conversationWorkbench" id="guide" aria-label="团绘店长对话工作台">
       <div className="conversationThread"><div className="conversationStage">{children}</div></div>
     </section>
