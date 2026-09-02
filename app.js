@@ -40,6 +40,7 @@ function renderAttachments() {
   if (storeFiles.files.length || dishFiles.files.length) status.textContent = `已选择 ${storeFiles.files.length} 张门店素材、${dishFiles.files.length} 张菜品素材。`;
 }
 document.querySelectorAll("[data-upload]").forEach((button) => button.addEventListener("click", () => (button.dataset.upload === "store" ? storeFiles : dishFiles).click()));
+document.querySelector(".category-select > div button:not(:disabled)").addEventListener("click", () => document.querySelector(".category-select").removeAttribute("open"));
 storeFiles.addEventListener("change", renderAttachments);
 dishFiles.addEventListener("change", renderAttachments);
 
