@@ -30,7 +30,7 @@ function renderQuickAsset(kind) {
     count.textContent = `${input.files.length} 张`;
   } else {
     preview.textContent = "＋";
-    count.textContent = "添加";
+    count.textContent = "";
   }
 }
 function renderModal() {
