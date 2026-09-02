@@ -127,32 +127,17 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .formMeta { gap: 17px; margin-top: 9px; color: #858585; font-size: 11px; }
 .workflowInputMeta .formMeta { margin-top: 0; }
 .formMeta span { display: flex; align-items: center; gap: 4px; }
-.conversationHome { padding-top: 20px; }
-.conversationHero { max-width: 780px; margin: 0 auto 18px; text-align: center; }
-.conversationEyebrow { display: inline-flex; align-items: center; gap: 7px; color: #6f6f72; font-size: 11px; font-weight: 700; }
-.conversationHero h1 { margin: 8px 0 5px; font-size: clamp(30px, 3.2vw, 43px); line-height: 1.1; letter-spacing: -.055em; text-wrap: balance; }
-.conversationHero p { max-width: 650px; margin: 0 auto; color: #858589; font-size: 13px; }
-.creationTypeTabs { width: fit-content; display: flex; align-items: center; gap: 3px; margin: 0 auto 12px; padding: 3px; border-radius: 12px; background: #eaeaeb; }
-.creationTypeTabs button { min-height: 36px; padding: 0 15px; border: 0; border-radius: 9px; background: transparent; color: #777; cursor: pointer; transition: background-color .18s ease, color .18s ease; }
-.creationTypeTabs button.active { background: white; color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.06); font-weight: 680; }
-.creationTypeTabs button:disabled { cursor: not-allowed; opacity: .38; }
-.conversationWorkbench { overflow: visible; border: 1px solid rgba(255,255,255,.96); border-radius: 26px; background: white; box-shadow: var(--shadow-float); }
-.conversationTop { min-height: 62px; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 8px 20px; border-bottom: 1px solid var(--line); background: #f8f8f9; border-radius: 26px 26px 0 0; }
-.conversationProject { min-width: 0; display: flex; align-items: center; gap: 9px; }
-.conversationProject > .brandSymbol { width: 31px; height: 18px; }
-.conversationProject > span { min-width: 0; display: grid; }
-.conversationProject b { overflow: hidden; max-width: 190px; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.conversationProject small { color: #999; font-size: 9px; }
-.conversationState { min-height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border-radius: 99px; background: #ededee; color: #777; font-size: 10px; font-weight: 650; white-space: nowrap; }
-.conversationState i { width: 6px; height: 6px; border-radius: 50%; background: #a8a8aa; }
-.conversationState.active { background: #f0edff; color: #6544c5; }.conversationState.active i { background: var(--purple); }
-.conversationThread { padding: 24px 28px 26px; }
-.assistantPrompt { max-width: 780px; display: flex; align-items: flex-start; gap: 11px; margin: 0 auto 15px; }
-.assistantPrompt .assistantAvatar { width: 36px; height: 36px; flex: 0 0 auto; border-radius: 12px; }
-.assistantPrompt .assistantAvatar .brandSymbol { width: 25px; height: 14px; color: white; }
-.assistantPrompt > div { min-width: 0; padding-top: 1px; }
-.assistantPrompt strong { font-size: 14px; }
-.assistantPrompt p { margin: 2px 0 0; color: #858589; font-size: 11px; }
+.conversationHome { padding-top: 34px; }
+.creationAgentHeader { display: flex; justify-content: center; align-items: center; gap: 15px; margin: 0 auto 26px; }
+.agentConjunction, .creationAgentHeader h1 { font-family: Georgia, "Songti SC", "STSong", serif; font-weight: 500; letter-spacing: -.025em; }
+.agentConjunction { font-size: 30px; line-height: 1; }
+.creationAgentHeader h1 { margin: 0; font-size: clamp(25px, 2.5vw, 34px); line-height: 1.15; white-space: nowrap; }
+.creationTypeTabs { width: fit-content; display: flex; align-items: center; gap: 2px; margin: 0; padding: 3px; border-radius: 999px; background: #e8e8e9; }
+.creationTypeTabs button { min-height: 42px; padding: 0 22px; border: 0; border-radius: 999px; background: transparent; color: #69696c; cursor: pointer; transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; white-space: nowrap; }
+.creationTypeTabs button.active { background: var(--black); color: white; box-shadow: 0 9px 24px rgba(0,0,0,.16); font-weight: 680; }
+.creationTypeTabs button:disabled { cursor: not-allowed; opacity: .58; }
+.conversationWorkbench { overflow: visible; border: 0; border-radius: 28px; background: transparent; box-shadow: none; }
+.conversationThread { padding: 0; }
 .conversationStage { max-width: 960px; margin: 0 auto; }
 .conversationStage .stepBody { min-height: 0; }
 .conversationStage .createStep { max-width: none; min-height: 0; display: block; padding: 0; }
@@ -165,15 +150,15 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .conversationStage .workflowInputFrame { min-height: 150px; background: #fbfbfc; }
 .conversationStage .assetSection { margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 17px; background: #fafafa; }
 .conversationStage .factSummaryDisclosure { margin-top: 12px; }
-.singleConversationComposer { overflow: visible; border: 1px solid #dcdcdf; border-radius: 22px; background: #fbfbfc; box-shadow: 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease; }
-.singleConversationComposer:focus-within { border-color: #b9b9bc; box-shadow: 0 0 0 3px rgba(0,0,0,.035); }
-.conversationNameField { min-height: 58px; display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; padding: 0 20px; border-bottom: 1px solid #e8e8ea; border-radius: 21px 21px 0 0; transition: background-color .18s ease, box-shadow .18s ease; }
+.singleConversationComposer { overflow: visible; border: 1px solid rgba(255,255,255,.95); border-radius: 28px; background: rgba(255,255,255,.82); box-shadow: 0 18px 50px rgba(0,0,0,.045); transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+.singleConversationComposer:focus-within { border-color: #d0d0d3; background: white; box-shadow: 0 20px 56px rgba(0,0,0,.06); }
+.conversationNameField { min-height: 58px; display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; padding: 0 20px; border-bottom: 1px solid #e8e8ea; border-radius: 27px 27px 0 0; transition: background-color .18s ease, box-shadow .18s ease; }
 .conversationNameField:focus-within { background: #f7f7f8; box-shadow: inset 3px 0 0 #68686b; }
 .conversationNameField > span { color: #777; font-size: 11px; font-weight: 650; }
 .conversationNameField input { min-height: 57px; padding: 0; border: 0; outline: 0; background: transparent; font-size: 15px; font-weight: 650; }
 .conversationNameField input:disabled { color: var(--ink); opacity: 1; }
 .conversationBriefField { display: block; }
-.conversationBriefField textarea { width: 100%; min-height: 190px; display: block; resize: vertical; padding: 22px 20px 12px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 1.75; }
+.conversationBriefField textarea { width: 100%; min-height: 166px; display: block; resize: vertical; padding: 20px 20px 10px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 1.7; }
 .conversationBriefField textarea::placeholder { color: #a0a0a3; }
 .conversationPreviewStrip { display: flex; gap: 10px; padding: 10px 16px; overflow-x: auto; border-top: 1px solid #ececee; background: #f7f7f8; }
 .conversationAttachmentGroup { min-width: 0; display: flex; align-items: center; gap: 6px; }
@@ -201,7 +186,13 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .conversationCategoryMenu button:disabled { cursor: not-allowed; opacity: .45; }
 .conversationSubmit { min-height: 44px; flex: 0 0 auto; }
 .conversationFormError { min-height: 38px; display: flex; align-items: center; gap: 7px; margin: 0; padding: 0 18px; border-top: 1px solid #f3d6d3; background: #fff7f6; color: var(--danger); font-size: 11px; }
-.conversationPrivacy { min-height: 34px; display: flex; justify-content: center; align-items: center; gap: 6px; margin: 0; border-top: 1px solid #ededee; background: #fafafa; color: #888; font-size: 9px; }
+.conversationPrivacy { min-height: 32px; display: flex; justify-content: center; align-items: center; gap: 6px; margin: 0; border-top: 1px solid #ededee; border-radius: 0 0 28px 28px; background: rgba(250,250,250,.76); color: #888; font-size: 9px; }
+.conversationInlineStatus { width: fit-content; max-width: 100%; min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 7px; margin: 14px auto 0; padding: 0 13px; border: 1px solid rgba(255,255,255,.9); border-radius: 999px; background: rgba(255,255,255,.7); color: #747477; font-size: 10px; }
+.conversationInlineStatus > span { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #ededee; }
+.conversationInlineStatus p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversationInlineStatus small { color: #999; }
+.conversationInlineStatus.success { color: var(--success); }.conversationInlineStatus.success > span { background: #e9f7ef; }
+.conversationInlineStatus.error { color: var(--danger); }.conversationInlineStatus.error > span { background: #fceceb; }
 .srOnly { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .conversationPrinciples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
 .conversationPrinciples article { min-height: 82px; display: flex; align-items: flex-start; gap: 11px; padding: 15px 17px; border: 1px solid rgba(255,255,255,.92); border-radius: 17px; background: rgba(255,255,255,.66); }
@@ -598,16 +589,13 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .topActions { right: 15px; }
   .tokenBadge { padding: 0 10px; }
   .contentWrap { width: min(100% - 28px, 680px); margin-top: 12px; }
-  .conversationHome { padding-top: 8px; }
-  .conversationHero { margin-bottom: 14px; }
-  .conversationHero h1 { font-size: 29px; }
-  .conversationHero p { padding: 0 8px; font-size: 12px; }
+  .conversationHome { padding-top: 18px; }
+  .creationAgentHeader { flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .creationAgentHeader h1 { order: -1; width: 100%; font-size: 27px; text-align: center; white-space: normal; }
+  .agentConjunction { display: none; }
   .creationTypeTabs { max-width: 100%; overflow-x: auto; }
   .creationTypeTabs button { flex: 0 0 auto; }
-  .conversationTop { padding: 10px 14px; }
-  .conversationThread { padding: 20px 16px 22px; }
-  .assistantPrompt { margin-bottom: 12px; }
-  .conversationBriefField textarea { min-height: 170px; }
+  .conversationBriefField textarea { min-height: 150px; }
   .conversationStage .workflowInputFrame { min-height: 132px; }
   .conversationPrinciples { grid-template-columns: 1fr; }
   .workbenchTop { grid-template-columns: 1fr auto; gap: 10px; padding: 10px 14px; }
@@ -665,12 +653,10 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
   .announcement b { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tokenBadge { font-size: 0; }.tokenBadge::after { content: "0 Token"; font-size: 11px; }
   .modeTabs button span { display: none; }
-  .conversationProject small { display: none; }
-  .conversationState { padding-inline: 8px; font-size: 9px; }
-  .conversationThread { padding: 17px 12px 20px; }
-  .assistantPrompt p { font-size: 10px; }
+  .creationAgentHeader h1 { font-size: 24px; }
+  .creationTypeTabs button { min-height: 40px; padding: 0 16px; font-size: 13px; }
   .conversationNameField { grid-template-columns: 72px minmax(0,1fr); padding-inline: 14px; }
-  .conversationBriefField textarea { min-height: 180px; padding: 18px 14px 10px; }
+  .conversationBriefField textarea { min-height: 150px; padding: 18px 14px 10px; }
   .conversationComposerFooter { align-items: stretch; flex-direction: column; padding: 10px; }
   .conversationTools { width: 100%; overflow-x: auto; }
   .conversationSubmit { width: 100%; }
