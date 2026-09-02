@@ -165,7 +165,7 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .conversationStage .workflowInputFrame { min-height: 150px; background: #fbfbfc; }
 .conversationStage .assetSection { margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 17px; background: #fafafa; }
 .conversationStage .factSummaryDisclosure { margin-top: 12px; }
-.singleConversationComposer { overflow: hidden; border: 1px solid #dcdcdf; border-radius: 22px; background: #fbfbfc; box-shadow: 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease; }
+.singleConversationComposer { overflow: visible; border: 1px solid #dcdcdf; border-radius: 22px; background: #fbfbfc; box-shadow: 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease; }
 .singleConversationComposer:focus-within { border-color: #b9b9bc; box-shadow: 0 0 0 3px rgba(0,0,0,.035); }
 .conversationNameField { min-height: 58px; display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; padding: 0 20px; border-bottom: 1px solid #e8e8ea; }
 .conversationNameField > span { color: #777; font-size: 11px; font-weight: 650; }
@@ -192,8 +192,8 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .conversationCategory small { color: #8a8a8d; font-size: 8px; font-weight: 500; }.conversationCategory b { margin-top: 3px; font-size: 10px; }
 .conversationCategory > summary > i { width: 7px; height: 7px; flex: 0 0 auto; margin-right: 2px; border-right: 1.5px solid #777; border-bottom: 1.5px solid #777; transform: rotate(45deg) translateY(-2px); transition: transform .18s ease; }
 .conversationCategory[open] > summary > i { transform: rotate(225deg) translate(-2px,-1px); }
-.conversationCategoryMenu { position: absolute; z-index: 30; right: 0; bottom: calc(100% + 8px); width: 218px; display: grid; gap: 3px; padding: 6px; border: 1px solid #dedee1; border-radius: 14px; background: white; box-shadow: 0 18px 44px rgba(0,0,0,.14); }
-.conversationCategoryMenu::after { content: ""; position: absolute; right: 21px; bottom: -5px; width: 9px; height: 9px; border-right: 1px solid #dedee1; border-bottom: 1px solid #dedee1; background: white; transform: rotate(45deg); }
+.conversationCategoryMenu { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; width: 218px; display: grid; gap: 3px; padding: 6px; border: 1px solid #dedee1; border-radius: 14px; background: white; box-shadow: 0 18px 44px rgba(0,0,0,.14); }
+.conversationCategoryMenu::before { content: ""; position: absolute; top: -5px; right: 21px; width: 9px; height: 9px; border-top: 1px solid #dedee1; border-left: 1px solid #dedee1; background: white; transform: rotate(45deg); }
 .conversationCategoryMenu button { position: relative; z-index: 1; min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; text-align: left; cursor: pointer; }
 .conversationCategoryMenu button:hover:not(:disabled) { background: #f3f3f4; }
 .conversationCategoryMenu button > span { display: grid; }.conversationCategoryMenu button b { margin: 0; font-size: 11px; }.conversationCategoryMenu button small { margin-top: 2px; font-size: 8px; }
