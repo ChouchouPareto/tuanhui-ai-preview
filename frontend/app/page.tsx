@@ -336,7 +336,10 @@ function QuickCreationHome({ projectName, assets, busy, message, messageTone, on
     if (saved) { [...storeItems, ...dishItems].forEach((item) => URL.revokeObjectURL(item.previewUrl)); setStoreItems([]); setDishItems([]); }
   }
 
-  const tile = (kind: "store" | "dish", items: PendingUpload[], savedCount: number) => <button className="quickAssetTile" type="button" onClick={() => setAssetDialog(kind)}><span>{kind === "store" ? "门店" : "菜品"}</span>{items[0] ? <Image src={items[0].previewUrl} alt="" fill unoptimized sizes="100px" /> : <Icon name={kind === "store" ? "store" : "image"} size={24} />}<b>{kind === "store" ? "门店素材" : "菜单、菜品图"}</b><small>{savedCount + items.length ? `${savedCount + items.length} 张` : "添加"}</small></button>;
+  const tile = (kind: "store" | "dish", items: PendingUpload[], savedCount: number) => {
+    const count = savedCount + items.length;
+    return <button className="quickAssetTile" type="button" aria-label={`选择${kind === "store" ? "门店" : "菜品"}素材${count ? `，已选择 ${count} 张` : ""}`} onClick={() => setAssetDialog(kind)}><span>{kind === "store" ? "门店" : "菜品"}</span>{items[0] ? <Image src={items[0].previewUrl} alt="" fill unoptimized sizes="140px" /> : <Icon name="plus" size={25} />}{count > 0 && <small>{count}</small>}</button>;
+  };
   const menu = (label: string, value: string, options: string[], setValue: (value: string) => void) => <details className="quickDropdown"><summary><span><small>{label}</small><b>{value}</b></span><i aria-hidden="true" /></summary><div>{options.map((option) => <button key={option} type="button" className={option === value ? "active" : ""} onClick={(event) => { setValue(option); event.currentTarget.closest("details")?.removeAttribute("open"); }}><span>{option}</span>{option === value && <Icon name="check" size={15} />}</button>)}</div></details>;
   const dialogItems = assetDialog === "store" ? storeItems : dishItems;
 
