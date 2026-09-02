@@ -275,6 +275,85 @@ function ConversationIntake({ projectName, assets, busy, onSubmit }: { projectNa
   </form>;
 }
 
+function CreationDiscovery() {
+  return <><section className="creationSuggestions" aria-labelledby="suggestion-title"><header><h2 id="suggestion-title">推荐能力</h2><span>全部</span></header><div><article><span className="suggestionIcon"><Icon name="image" size={16} /></span><b>团购首页五图</b><small>20:3 长图排版</small><Icon name="arrow" size={14} /></article><article><span className="suggestionIcon"><Icon name="spark" size={16} /></span><b>Logo 设计</b><small>品牌标识与单体图形</small><Icon name="arrow" size={14} /></article><article><span className="suggestionIcon"><Icon name="book" size={16} /></span><b>品牌介绍图</b><small>门店故事与品牌卖点</small><Icon name="arrow" size={14} /></article></div></section><section className="creationHighlights" aria-labelledby="highlight-title"><h2 id="highlight-title">亮点功能</h2><div><article className="highlightFive"><span>20:3</span><div className="fiveStrip">{[1,2,3,4,5].map((item) => <i key={item} />)}</div><h3>团购首页五图</h3><p>一张长画布设计，自动裁切五张 4:3 图片</p></article><article className="highlightLogo"><span className="logoSketch"><i /><i /><i /></span><h3>Logo 设计</h3><p>根据门店名称与定位生成品牌标识</p></article><article className="highlightBrand"><span className="brandPoster"><i /><b>BRAND</b></span><h3>品牌介绍图</h3><p>整合品牌故事、特色菜品和真实卖点</p></article><article className="highlightPlan"><span className="planSketch"><i /><i /><i /></span><h3>营销方案</h3><p>围绕团购卖点规划内容与活动表达</p></article></div></section></>;
+}
+
+const QUICK_OPTIONS = {
+  model: ["千问（默认）", "豆包（失败兜底）"],
+  style: ["智能匹配", "食欲冲击", "品牌质感", "烟火市井", "清爽简约"],
+  layout: ["内容均衡", "爆款主图", "品牌叙事", "套餐对比"],
+  template: ["经典五图", "主菜聚焦", "门店故事", "到店转化"],
+};
+
+function QuickCreationHome({ projectName, assets, busy, message, messageTone, onSubmit }: { projectName: string; assets: Asset[]; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean> }) {
+  const [brief, setBrief] = useState("");
+  const [storeItems, setStoreItems] = useState<PendingUpload[]>([]);
+  const [dishItems, setDishItems] = useState<PendingUpload[]>([]);
+  const [assetDialog, setAssetDialog] = useState<"store" | "dish" | null>(null);
+  const [model, setModel] = useState(QUICK_OPTIONS.model[0]);
+  const [style, setStyle] = useState(QUICK_OPTIONS.style[0]);
+  const [layout, setLayout] = useState(QUICK_OPTIONS.layout[0]);
+  const [template, setTemplate] = useState(QUICK_OPTIONS.template[0]);
+  const [canvasMode, setCanvasMode] = useState(true);
+  const [error, setError] = useState("");
+  const storeInputRef = useRef<HTMLInputElement>(null);
+  const dishInputRef = useRef<HTMLInputElement>(null);
+  const pendingRef = useRef<PendingUpload[]>([]);
+  const savedStoreCount = assets.filter((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)).length;
+  const savedDishCount = assets.filter((asset) => DISH_ASSET_ROLES.includes(asset.semantic_role)).length;
+
+  useEffect(() => { pendingRef.current = [...storeItems, ...dishItems]; });
+  useEffect(() => () => { pendingRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl)); }, []);
+
+  function chooseFiles(event: ChangeEvent<HTMLInputElement>, kind: "store" | "dish") {
+    const current = kind === "store" ? storeItems : dishItems;
+    const files = Array.from(event.target.files ?? []).slice(0, Math.max(0, 20 - current.length));
+    const additions = files.map((file, index) => ({ id: `quick-${kind}-${Date.now()}-${index}-${file.name}`, file, previewUrl: URL.createObjectURL(file), role: kind === "store" ? "storefront" : "dish", subcategory: "", priority: 100, isHero: false }));
+    if (kind === "store") setStoreItems((items) => [...items, ...additions]); else setDishItems((items) => [...items, ...additions]);
+    event.target.value = "";
+  }
+
+  function removeFile(id: string, kind: "store" | "dish") {
+    const update = (items: PendingUpload[]) => { const removed = items.find((item) => item.id === id); if (removed) URL.revokeObjectURL(removed.previewUrl); return items.filter((item) => item.id !== id); };
+    if (kind === "store") setStoreItems(update); else setDishItems(update);
+  }
+
+  function detectedName() {
+    if (projectName.trim()) return projectName.trim();
+    return brief.match(/(?:门店名称|店名|门店)\s*[：:]\s*([^；;，,。\n]+)/)?.[1]?.trim() ?? "";
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = detectedName();
+    if (!brief.trim()) { setError("请先描述门店名称、主推内容、价格和真实卖点"); return; }
+    if (!name) { setError("请在文字中写明“门店名称：×××”"); return; }
+    if (!savedStoreCount && !storeItems.length) { setError("请添加至少一张门店素材"); return; }
+    if (!savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
+    setError("");
+    const saved = await onSubmit({ name, brief: `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
+    if (saved) { [...storeItems, ...dishItems].forEach((item) => URL.revokeObjectURL(item.previewUrl)); setStoreItems([]); setDishItems([]); }
+  }
+
+  const tile = (kind: "store" | "dish", items: PendingUpload[], savedCount: number) => <button className="quickAssetTile" type="button" onClick={() => setAssetDialog(kind)}><span>{kind === "store" ? "门店" : "菜品"}</span>{items[0] ? <Image src={items[0].previewUrl} alt="" fill unoptimized sizes="100px" /> : <Icon name={kind === "store" ? "store" : "image"} size={24} />}<b>{kind === "store" ? "门店素材" : "菜单、菜品图"}</b><small>{savedCount + items.length ? `${savedCount + items.length} 张` : "添加"}</small></button>;
+  const menu = (label: string, value: string, options: string[], setValue: (value: string) => void) => <details className="quickDropdown"><summary><span><small>{label}</small><b>{value}</b></span><i aria-hidden="true" /></summary><div>{options.map((option) => <button key={option} type="button" className={option === value ? "active" : ""} onClick={(event) => { setValue(option); event.currentTarget.closest("details")?.removeAttribute("open"); }}><span>{option}</span>{option === value && <Icon name="check" size={15} />}</button>)}</div></details>;
+  const dialogItems = assetDialog === "store" ? storeItems : dishItems;
+
+  return <section className="quickCreationHome" aria-labelledby="quick-creation-title">
+    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>营销方案</button></div><h1 id="quick-creation-title">让每家门店，都有一套会成交的设计</h1></header>
+    <form className="quickComposer" noValidate onSubmit={submit}>
+      <div className="quickComposerBody"><div className="quickAssetRail">{tile("store", storeItems, savedStoreCount)}{tile("dish", dishItems, savedDishCount)}</div><label className="quickPrompt"><span className="srOnly">创作需求</span><textarea value={brief} maxLength={1000} disabled={busy} placeholder="写清门店名称、定位、主推套餐、真实价格和卖点，团绘AI会补全设计方案。例如：门店名称：山城酸菜鱼；主推酸菜鱼双人餐，99元；活鱼现做，酸香开胃。" onChange={(event) => setBrief(event.target.value)} /></label></div>
+      <div className="quickComposerToolbar"><div className="quickToolbarStart"><button type="button" className="quickIconButton" aria-label="添加门店素材" title="添加门店素材" onClick={() => setAssetDialog("store")}><Icon name="plus" size={22} /></button><button type="button" className="quickIconButton" aria-label="添加菜品素材" title="添加菜品素材" onClick={() => setAssetDialog("dish")}><span>@</span></button></div><div className="quickToolbarMenus">{menu("模型", model, QUICK_OPTIONS.model, setModel)}{menu("风格", style, QUICK_OPTIONS.style, setStyle)}{menu("布局", layout, QUICK_OPTIONS.layout, setLayout)}{menu("模板", template, QUICK_OPTIONS.template, setTemplate)}<details className="quickPreference"><summary><Icon name="spark" size={16} /><b>智能匹配</b><span>创作偏好</span><i aria-hidden="true" /></summary><div className="quickPreferencePanel"><div className="preferenceTabs"><button className="active" type="button">图片偏好</button><button type="button">推理模型</button></div><section><div><small>输出画布</small><strong>20:3 团购五联长图</strong><p>生成后自动裁切为五张 4:3 图片</p></div><div className="ratioChoices"><button className="active" type="button">20:3</button><button type="button" disabled>1:1</button><button type="button" disabled>3:4</button></div></section></div></details></div><div className="quickToolbarEnd"><button className={`canvasToggle ${canvasMode ? "active" : ""}`} type="button" aria-pressed={canvasMode} onClick={() => setCanvasMode((value) => !value)}><span aria-hidden="true" />画布</button><button className="quickSubmit" type="submit" disabled={busy} aria-label={busy ? "正在整理资料" : "提交创作需求"}>{busy ? <span>整理中</span> : <Icon name="arrow" size={20} />}</button></div></div>
+      {(error || messageTone === "error") && <p className="quickComposerError" role="alert"><Icon name="close" size={15} />{error || message}</p>}
+    </form>
+    <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>
+    <CreationDiscovery />
+    <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "store")} /><input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "dish")} />
+    {assetDialog && <div className="assetPickerBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAssetDialog(null); }}><section className="assetPickerDialog" role="dialog" aria-modal="true" aria-labelledby="asset-picker-title"><header><h2 id="asset-picker-title">{assetDialog === "store" ? "门店素材" : "菜品素材"}</h2><button type="button" aria-label="关闭" onClick={() => setAssetDialog(null)}><Icon name="close" size={19} /></button></header><div className="assetPickerTools"><button type="button" className="sortButton">↕ 倒序</button><div><button type="button" className="addAssetButton" onClick={() => (assetDialog === "store" ? storeInputRef : dishInputRef).current?.click()}><Icon name="plus" size={16} />新增</button><label><span className="srOnly">搜索素材</span><input placeholder="搜索" /></label></div></div><div className="assetPickerContent">{dialogItems.length ? <div className="assetPickerGrid">{dialogItems.map((item, index) => <article key={item.id}><div><Image src={item.previewUrl} alt={`已选择素材 ${index + 1}`} fill unoptimized sizes="140px" /></div><span title={item.file.name}>{item.file.name}</span><button type="button" aria-label={`移除 ${item.file.name}`} onClick={() => removeFile(item.id, assetDialog)}><Icon name="close" size={12} /></button></article>)}</div> : <p>暂无{assetDialog === "store" ? "门店" : "菜品"}素材，点击“新增”选择图片</p>}</div><footer><button type="button" onClick={() => setAssetDialog(null)}>取消</button><button type="button" className="primary" onClick={() => setAssetDialog(null)}>添加</button></footer></section></div>}
+  </section>;
+}
+
 function ConversationWorkbench({ projectName, message, messageTone, taskId, collectingFacts, children }: { projectName: string; message: string; messageTone: "info" | "success" | "error"; taskId: string; collectingFacts: boolean; children: ReactNode }) {
   return <section className="conversationHome" aria-labelledby="conversation-title">
     <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled title="一键生图将在后续版本开放">一键生图</button><button type="button" role="tab" aria-selected="false" disabled title="营销方案将在后续版本开放">营销方案</button></div><h1 id="conversation-title">让每家门店，都有一套会成交的设计</h1></header>
@@ -282,7 +361,7 @@ function ConversationWorkbench({ projectName, message, messageTone, taskId, coll
       <div className="conversationThread"><div className="conversationStage">{children}</div></div>
     </section>
     <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : messageTone === "error" ? <Icon name="close" size={15} /> : <Icon name="spark" size={15} />}</span><p>{collectingFacts ? `${projectName || "当前门店"} · 资料留在当前对话中继续确认` : message}</p>{taskId && <small>任务 {taskId.slice(0, 8)}</small>}</div>
-    {!collectingFacts && <><section className="creationSuggestions" aria-labelledby="suggestion-title"><header><h2 id="suggestion-title">推荐能力</h2><span>全部</span></header><div><article><span className="suggestionIcon"><Icon name="image" size={16} /></span><b>团购首页五图</b><small>20:3 长图排版</small><Icon name="arrow" size={14} /></article><article><span className="suggestionIcon"><Icon name="spark" size={16} /></span><b>Logo 设计</b><small>品牌标识与单体图形</small><Icon name="arrow" size={14} /></article><article><span className="suggestionIcon"><Icon name="book" size={16} /></span><b>品牌介绍图</b><small>门店故事与品牌卖点</small><Icon name="arrow" size={14} /></article></div></section><section className="creationHighlights" aria-labelledby="highlight-title"><h2 id="highlight-title">亮点功能</h2><div><article className="highlightFive"><span>20:3</span><div className="fiveStrip">{[1,2,3,4,5].map((item) => <i key={item} />)}</div><h3>团购首页五图</h3><p>一张长画布设计，自动裁切五张 4:3 图片</p></article><article className="highlightLogo"><span className="logoSketch"><i /><i /><i /></span><h3>Logo 设计</h3><p>根据门店名称与定位生成品牌标识</p></article><article className="highlightBrand"><span className="brandPoster"><i /><b>BRAND</b></span><h3>品牌介绍图</h3><p>整合品牌故事、特色菜品和真实卖点</p></article><article className="highlightPlan"><span className="planSketch"><i /><i /><i /></span><h3>营销方案</h3><p>围绕团购卖点规划内容与活动表达</p></article></div></section></>}
+    {!collectingFacts && <CreationDiscovery />}
   </section>;
 }
 
@@ -356,13 +435,12 @@ export default function Home() {
     <main className="mainArea" id="workspace">
       <header className="topbar"><button className="iconButton menuButton" aria-label="打开导航" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button><div className="announcement"><span>NEW</span><b>团绘AI 对话优先测试版</b><small>先确认事实，再进入成图</small></div><div className="topActions"><span className="tokenBadge"><i /> 默认 0 Token</span><a className="helpButton" href="#guide"><Icon name="help" size={18} />帮助</a></div></header>
       <div className="contentWrap">
-        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeView === "conversation" && activeStep <= 4 ? <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts={Boolean(coverage)}>{coverage ? <FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /> : <ConversationIntake projectName={projectName} assets={assets} busy={busy} onSubmit={submitConversationIntake} />}</ConversationWorkbench> : <>
+        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeStep <= 4 && (activeView === "conversation" || activeView === "professional") ? activeView === "conversation" && !coverage ? <QuickCreationHome projectName={projectName} assets={assets} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} /> : <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts={Boolean(coverage)}>{coverage ? <FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /> : <ConversationIntake projectName={projectName} assets={assets} busy={busy} onSubmit={submitConversationIntake} />}</ConversationWorkbench> : <>
           <section className="workbench" aria-label={activeView === "professional" ? "专业门店资料采集工作台" : "五图创作工作台"}>
             <div className="workbenchTop"><div className="workbenchLabel"><Icon name={activeStep === 1 ? "store" : activeStep === 4 ? "chat" : activeStep >= 5 ? "spark" : "upload"} size={18} /><span><b>{activeStep >= 5 ? "五图创作" : "门店视觉包"}</b><small>{projectName || "新建项目"}</small></span></div><StepTabs active={activeStep} maxStep={maxStep} onSelect={setActiveStep} /><div className="stepCounter">{activeStep >= 5 ? activeStep - 4 : activeStep} / {activeStep >= 5 ? 2 : 4}</div></div>
             {activeStepContent}
             <div className={`statusToast ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={17} /> : messageTone === "error" ? <Icon name="close" size={17} /> : <Icon name="spark" size={17} />}</span><p>{message}</p>{taskId && <small>任务 {taskId.slice(0, 8)}</small>}</div>
           </section>
-          {activeView === "professional" && activeStep === 1 && <section className="guideSection" id="guide"><div className="sectionHeading"><div><span className="stepKicker">专业流程</span><h2>从门店资料到团购首页</h2></div><p>按四个步骤补齐门店和菜品信息，适合需要逐项精细检查的用户。</p></div><div className="guideGrid"><article><span>01</span><Icon name="store" /><h3>建立门店项目</h3><p>选择门店类型并填写名称，建立一份独立的设计任务。</p></article><article><span>02</span><Icon name="upload" /><h3>上传真实素材</h3><p>依次添加门头、环境、菜单和菜品图片，系统统一保存整理。</p></article><article><span>03</span><Icon name="check" /><h3>核对后开始设计</h3><p>确认店名、主推菜、价格和卖点，再生成团购首页五图。</p></article></div></section>}
         </>}
       </div>
     </main>
