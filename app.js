@@ -75,6 +75,15 @@ document.querySelectorAll(".quick-menu > div button").forEach((button) => button
   menu.querySelector("summary b").textContent = button.textContent;
   menu.removeAttribute("open");
 }));
+const quickMenus = document.querySelectorAll(".quick-menu, .preference-menu");
+quickMenus.forEach((menu) => menu.addEventListener("toggle", () => {
+  if (!menu.open) return;
+  quickMenus.forEach((other) => { if (other !== menu) other.removeAttribute("open"); });
+}));
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest(".quick-menu, .preference-menu")) quickMenus.forEach((menu) => menu.removeAttribute("open"));
+});
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") quickMenus.forEach((menu) => menu.removeAttribute("open")); });
 document.querySelector(".canvas-switch").addEventListener("click", (event) => {
   const button = event.currentTarget;
   const active = button.classList.toggle("active");
@@ -91,7 +100,15 @@ document.querySelector("#quick-composer").addEventListener("submit", (event) => 
   if (!quickDishFiles.files.length) return fail("请添加至少一张菜品或菜单素材。", document.querySelector('[data-picker="dish"]'));
   error.hidden = true;
   status.className = "status inline-status success";
-  status.textContent = "资料已收集完成。展示版不会调用 API，也不会上传文件。";
+  status.textContent = "资料已收集完成，请在首页确认后直接生成。";
+  const storeMatch = brief.value.match(/(?:门店名称|店名|门店)\s*[：:]\s*([^；;,，。\n]+)/);
+  document.querySelector("#confirm-store").textContent = storeMatch?.[1]?.trim() || "待确认";
+  document.querySelector("#quick-confirm").hidden = false;
+  document.querySelector("#quick-confirm").scrollIntoView({ behavior: "smooth", block: "center" });
+});
+document.querySelector("#preview-generate").addEventListener("click", () => {
+  status.className = "status inline-status success";
+  status.textContent = "已完成首页确认。GitHub 展示版不连接 API，不会产生任何费用。";
 });
 
 function renderProAttachments() {

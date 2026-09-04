@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="团绘AI对话创作页面展示版">
-  <title>团绘AI·对话创作</title>
+  <meta name="description" content="团绘AI本地生活一键生图页面展示版">
+  <title>团绘AI·一键生图</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,10 +13,9 @@
   <aside class="sidebar" aria-label="主导航">
     <a class="brand" href="#main" aria-label="团绘AI首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>团绘AI</strong><small>TUANHUI AI</small></span></a>
     <nav>
-      <button class="nav-item active" type="button" data-view="conversation">创作</button>
-      <button class="nav-item" type="button" disabled>一键生图<em>NEW</em></button>
-      <button class="nav-item" type="button" disabled>营销方案</button>
+      <button class="nav-item active" type="button" data-view="conversation">一键生图<em>NEW</em></button>
       <button class="nav-item" type="button" data-view="professional">专业创作</button>
+      <button class="nav-item" type="button" disabled>营销方案</button>
       <button class="nav-item" type="button" disabled>我的项目<small>待接入</small></button>
       <button class="nav-item" type="button" disabled>素材库</button>
     </nav>
@@ -24,23 +23,24 @@
   </aside>
 
   <main id="main">
-    <header class="topbar"><div class="notice"><b>NEW</b><span>团绘AI 对话创作版</span><small>先确认事实，再进入成图</small></div><span class="token"><i></i>展示模式·0 Token</span></header>
+    <header class="topbar"><div class="notice"><b>NEW</b><span>团绘AI 一键生图首页</span><small>首页确认真实信息，直接成图</small></div><span class="token"><i></i>展示模式·0 Token</span></header>
 
     <section class="view active" id="conversation-view">
-      <header class="agent-heading"><div class="product-tabs" role="tablist" aria-label="创作模式"><button class="active" type="button" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" disabled>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>营销方案</button></div><h1>让每家门店，都有一套会成交的设计</h1></header>
+      <header class="agent-heading"><div class="product-tabs" role="tablist" aria-label="创作模式"><button type="button" role="tab" aria-selected="false" disabled>创作</button><button class="active" type="button" role="tab" aria-selected="true">一键生图</button><button type="button" role="tab" aria-selected="false" disabled>营销方案</button></div><h1>让每家门店，都有一套会成交的设计</h1></header>
       <form class="quick-composer" id="quick-composer">
         <div class="quick-body"><div class="quick-assets"><button class="quick-asset" type="button" data-picker="store" aria-label="选择门店素材"><em>门店</em><span class="quick-preview" id="quick-store-preview">＋</span><small id="quick-store-count"></small></button><button class="quick-asset" type="button" data-picker="dish" aria-label="选择菜品素材"><em>菜品</em><span class="quick-preview" id="quick-dish-preview">＋</span><small id="quick-dish-count"></small></button></div><label class="quick-prompt"><span class="sr-only">创作需求</span><textarea id="quick-input" placeholder="写清门店名称、定位、主推套餐、真实价格和卖点，团绘AI会补全设计方案。例如：门店名称：山城酸菜鱼；主推酸菜鱼双人餐，99元；活鱼现做，酸香开胃。"></textarea></label></div>
         <div class="quick-toolbar"><div class="quick-start"><button type="button" class="round-tool" data-picker="store" aria-label="添加门店素材">＋</button><button type="button" class="round-tool" data-picker="dish" aria-label="添加菜品素材">＠</button></div><div class="quick-menus">
           <details class="quick-menu"><summary><small>模型</small><b>千问（默认）</b><i></i></summary><div><button type="button" class="active">千问（默认）</button><button type="button">豆包（失败兜底）</button></div></details>
           <details class="quick-menu"><summary><small>风格</small><b>智能匹配</b><i></i></summary><div><button type="button" class="active">智能匹配</button><button type="button">食欲冲击</button><button type="button">品牌质感</button><button type="button">烟火市井</button><button type="button">清爽简约</button></div></details>
-          <details class="quick-menu"><summary><small>布局</small><b>内容均衡</b><i></i></summary><div><button type="button" class="active">内容均衡</button><button type="button">爆款主图</button><button type="button">品牌叙事</button><button type="button">套餐对比</button></div></details>
-          <details class="quick-menu"><summary><small>模板</small><b>经典五图</b><i></i></summary><div><button type="button" class="active">经典五图</button><button type="button">主菜聚焦</button><button type="button">门店故事</button><button type="button">到店转化</button></div></details>
+          <details class="quick-menu"><summary><small>布局</small><b>内容均衡</b><i></i></summary><div><button type="button" class="active">内容均衡</button><button type="button">爆款主图</button><button type="button">品牌叙事</button><button type="button">套餐对比</button><button type="button">单品聚焦</button><button type="button">场景沉浸</button></div></details>
+          <details class="quick-menu"><summary><small>模板</small><b>经典五图</b><i></i></summary><div><button type="button" class="active">经典五图</button><button type="button">主菜聚焦</button><button type="button">门店故事</button><button type="button">到店转化</button><button type="button">套餐促销</button><button type="button">新品上市</button><button type="button">节日营销</button><button type="button">品牌升级</button></div></details>
           <details class="preference-menu"><summary><span>✦</span><b>智能匹配</b><small>创作偏好</small><i></i></summary><div><nav><button class="active" type="button">图片偏好</button><button type="button">推理模型</button></nav><section><div><small>输出画布</small><b>20:3 团购五联长图</b><p>生成后自动裁切为五张 4:3 图片</p></div><strong>20:3</strong></section></div></details>
         </div><div class="quick-end"><button class="canvas-switch active" type="button" aria-pressed="true"><i></i>画布</button><button class="quick-send" type="submit" aria-label="提交创作需求">→</button></div></div>
         <p class="quick-error" id="quick-error" role="alert" hidden></p>
         <input id="quick-store-files" type="file" accept="image/*" multiple hidden><input id="quick-dish-files" type="file" accept="image/*" multiple hidden>
       </form>
       <footer class="status inline-status" id="status">把门店资料和创作要求一次发给我。</footer>
+      <section class="quick-confirm" id="quick-confirm" hidden><header><div><small>首页确认</small><h2>确认真实信息后直接生成</h2><p>店名、价格和卖点以这里为准；确认后才会进入生图。</p></div><span>资料已齐</span></header><dl><div><dt>门店名称</dt><dd id="confirm-store">待确认</dd></div><div><dt>主推内容</dt><dd>以输入内容为准</dd></div><div><dt>真实价格</dt><dd>以输入内容为准</dd></div><div><dt>核心卖点</dt><dd>以输入内容为准</dd></div></dl><button id="preview-generate" type="button">确认无误，直接生成 <span>→</span></button></section>
       <section class="suggestions"><header><h2>推荐能力</h2><span>全部</span></header><div><article><i>01</i><b>团购首页五图</b><small>20:3 长图排版</small><span>↗</span></article><article><i>02</i><b>Logo 设计</b><small>品牌标识与单体图形</small><span>↗</span></article><article><i>03</i><b>品牌介绍图</b><small>门店故事与品牌卖点</small><span>↗</span></article></div></section>
       <section class="highlights"><h2>亮点功能</h2><div><article class="five"><span><i></i><i></i><i></i><i></i><i></i></span><h3>团购首页五图</h3><p>一张长画布设计，自动裁切五张图片</p></article><article class="logo-card"><span><i></i><i></i><i></i></span><h3>Logo 设计</h3><p>根据门店名称与定位生成品牌标识</p></article><article class="brand-card"><span><i></i><b>BRAND</b></span><h3>品牌介绍图</h3><p>整合品牌故事、特色菜品和真实卖点</p></article><article class="plan-card"><span><i></i><i></i><i></i></span><h3>营销方案</h3><p>围绕团购卖点规划活动表达</p></article></div></section>
     </section>
