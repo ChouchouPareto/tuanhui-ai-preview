@@ -11,6 +11,9 @@ let activePicker = "store";
 function setView(name) {
   views.forEach((view) => view.classList.toggle("active", view.id === `${name}-view`));
   navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === name));
+  const notice = document.querySelector(".notice");
+  notice.querySelector("span").textContent = name === "professional" ? "团绘AI 专业创作" : "团绘AI 一键生图首页";
+  notice.querySelector("small").textContent = name === "professional" ? "确认事实与设计方案后再生成" : "首页确认真实信息，直接成图";
   document.querySelector(".sidebar").classList.remove("open");
   document.querySelector(".scrim").classList.remove("open");
 }
@@ -136,7 +139,7 @@ document.querySelector("#pro-composer").addEventListener("submit", (event) => {
   if (!name.value.trim()) { name.focus(); proStatus.textContent = "请填写门店名称。"; return; }
   if (!brief.value.trim()) { brief.focus(); proStatus.textContent = "请补充本次创作需求。"; return; }
   proStatus.className = "status inline-status success";
-  proStatus.textContent = "专业资料已保存。展示版不会调用 API。";
+  proStatus.textContent = "资料已保存。下一步将确认事实与设计方案，确认后再开始生成；展示版不连接 API。";
 });
 
 const menu = document.querySelector(".mobile-menu");
