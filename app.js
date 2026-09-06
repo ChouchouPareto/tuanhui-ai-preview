@@ -19,28 +19,85 @@ function setView(name) {
 }
 navItems.forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
 
-function filesFor(kind) { return kind === "store" ? quickStoreFiles : quickDishFiles; }
+const selectedAssets = { store: [], dish: [] };
+const hoverPreview = document.querySelector("#image-hover");
+const imageDialog = document.querySelector("#image-dialog");
+let previewedAsset = null;
+
+function inputFor(kind) { return kind === "store" ? quickStoreFiles : quickDishFiles; }
+function filesFor(kind) { return selectedAssets[kind]; }
+function closeHoverPreview() { hoverPreview.hidden = true; }
+function removeAsset(kind, id) {
+  const index = selectedAssets[kind].findIndex((asset) => asset.id === id);
+  if (index < 0) return;
+  URL.revokeObjectURL(selectedAssets[kind][index].url);
+  selectedAssets[kind].splice(index, 1);
+  if (previewedAsset?.id === id) imageDialog.close();
+  closeHoverPreview();
+  renderQuickAsset(kind);
+  if (!modal.hidden) renderModal();
+}
+function openImageDialog(asset) {
+  closeHoverPreview();
+  previewedAsset = asset;
+  imageDialog.querySelector("img").src = asset.url;
+  imageDialog.querySelector("img").alt = asset.file.name;
+  document.querySelector("#image-dialog-name").textContent = asset.file.name;
+  imageDialog.showModal();
+}
+function assetThumb(asset) {
+  const card = document.createElement("article");
+  card.className = "asset-thumb";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "asset-thumb-image";
+  button.setAttribute("aria-label", `预览 ${asset.file.name}`);
+  const image = document.createElement("img");
+  image.src = asset.url;
+  image.alt = asset.file.name;
+  button.appendChild(image);
+  button.addEventListener("click", () => openImageDialog(asset));
+  button.addEventListener("pointerenter", (event) => {
+    if (event.pointerType !== "mouse" || !matchMedia("(hover:hover)").matches) return;
+    const rect = button.getBoundingClientRect();
+    hoverPreview.querySelector("img").src = asset.url;
+    hoverPreview.querySelector("small").textContent = asset.file.name;
+    hoverPreview.style.left = `${Math.max(8, rect.right + 292 < innerWidth ? rect.right + 12 : rect.left - 292)}px`;
+    hoverPreview.style.top = `${Math.max(8, Math.min(rect.top, innerHeight - 308))}px`;
+    hoverPreview.hidden = false;
+  });
+  button.addEventListener("pointerleave", closeHoverPreview);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "asset-remove";
+  remove.setAttribute("aria-label", `移除 ${asset.file.name}`);
+  remove.textContent = "×";
+  remove.addEventListener("pointerenter", closeHoverPreview);
+  remove.addEventListener("click", () => removeAsset(asset.kind, asset.id));
+  card.append(button, remove);
+  return card;
+}
 function renderQuickAsset(kind) {
-  const input = filesFor(kind);
+  const assets = filesFor(kind);
   const preview = document.querySelector(`#quick-${kind}-preview`);
   const count = document.querySelector(`#quick-${kind}-count`);
   preview.replaceChildren();
-  if (input.files.length) {
-    const image = document.createElement("img");
-    image.src = URL.createObjectURL(input.files[0]);
-    image.alt = kind === "store" ? "门店素材预览" : "菜品素材预览";
-    preview.appendChild(image);
-    count.textContent = `${input.files.length} 张`;
-  } else {
-    preview.textContent = "＋";
-    count.textContent = "";
-  }
+  assets.forEach((asset) => preview.appendChild(assetThumb(asset)));
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "asset-add";
+  add.setAttribute("aria-label", `添加${kind === "store" ? "门店" : "菜品·菜单"}素材`);
+  add.innerHTML = assets.length ? "<b>＋</b><small>继续添加</small>" : "＋";
+  add.addEventListener("click", () => inputFor(kind).click());
+  preview.appendChild(add);
+  preview.classList.toggle("has-assets", Boolean(assets.length));
+  count.textContent = String(assets.length);
 }
 function renderModal() {
-  const input = filesFor(activePicker);
+  const assets = filesFor(activePicker);
   modalTitle.textContent = activePicker === "store" ? "门店素材" : "菜品素材";
   modalContent.replaceChildren();
-  if (!input.files.length) {
+  if (!assets.length) {
     const empty = document.createElement("p");
     empty.textContent = `暂无${activePicker === "store" ? "门店" : "菜品"}素材，点击“新增”选择图片`;
     modalContent.appendChild(empty);
@@ -48,14 +105,11 @@ function renderModal() {
   }
   const grid = document.createElement("div");
   grid.className = "modal-grid";
-  Array.from(input.files).forEach((file, index) => {
-    const card = document.createElement("article");
-    const image = document.createElement("img");
-    image.src = URL.createObjectURL(file);
-    image.alt = `素材 ${index + 1}`;
+  assets.forEach((asset) => {
+    const card = assetThumb(asset);
     const label = document.createElement("span");
-    label.textContent = file.name;
-    card.append(image, label);
+    label.textContent = asset.file.name;
+    card.append(label);
     grid.appendChild(card);
   });
   modalContent.appendChild(grid);
@@ -67,10 +121,22 @@ function openPicker(kind) {
   modal.querySelector("[data-modal-close]").focus();
 }
 document.querySelectorAll("[data-picker]").forEach((button) => button.addEventListener("click", () => openPicker(button.dataset.picker)));
-document.querySelector("#modal-add").addEventListener("click", () => filesFor(activePicker).click());
+document.querySelector("#modal-add").addEventListener("click", () => inputFor(activePicker).click());
 document.querySelectorAll("[data-modal-close]").forEach((button) => button.addEventListener("click", () => { modal.hidden = true; }));
 modal.addEventListener("mousedown", (event) => { if (event.target === modal) modal.hidden = true; });
-[quickStoreFiles, quickDishFiles].forEach((input, index) => input.addEventListener("change", () => { const kind = index ? "dish" : "store"; renderQuickAsset(kind); renderModal(); }));
+[quickStoreFiles, quickDishFiles].forEach((input, index) => input.addEventListener("change", () => {
+  const kind = index ? "dish" : "store";
+  Array.from(input.files).slice(0, Math.max(0, 20 - selectedAssets[kind].length)).forEach((file) => selectedAssets[kind].push({ id: `${kind}-${Date.now()}-${Math.random()}`, kind, file, url: URL.createObjectURL(file) }));
+  input.value = "";
+  renderQuickAsset(kind);
+  if (!modal.hidden) renderModal();
+}));
+document.querySelectorAll("[data-add-files]").forEach((button) => button.addEventListener("click", () => inputFor(button.dataset.addFiles).click()));
+document.querySelector("#image-dialog-close").addEventListener("click", () => imageDialog.close());
+document.querySelector("#image-dialog-remove").addEventListener("click", () => previewedAsset && removeAsset(previewedAsset.kind, previewedAsset.id));
+imageDialog.addEventListener("click", (event) => { if (event.target === imageDialog) imageDialog.close(); });
+addEventListener("scroll", closeHoverPreview, true);
+addEventListener("resize", closeHoverPreview);
 
 document.querySelectorAll(".quick-menu > div button").forEach((button) => button.addEventListener("click", () => {
   const menu = button.closest("details");
@@ -99,8 +165,8 @@ document.querySelector("#quick-composer").addEventListener("submit", (event) => 
   const fail = (text, target) => { error.hidden = false; error.textContent = text; target?.focus(); };
   if (!brief.value.trim()) return fail("请先描述门店名称、主推内容、价格和真实卖点。", brief);
   if (!/(?:门店名称|店名|门店)\s*[：:]/.test(brief.value)) return fail("请在文字中写明“门店名称：×××”。", brief);
-  if (!quickStoreFiles.files.length) return fail("请添加至少一张门店素材。", document.querySelector('[data-picker="store"]'));
-  if (!quickDishFiles.files.length) return fail("请添加至少一张菜品或菜单素材。", document.querySelector('[data-picker="dish"]'));
+  if (!selectedAssets.store.length) return fail("请添加至少一张门店素材。", document.querySelector('[data-add-files="store"]'));
+  if (!selectedAssets.dish.length) return fail("请添加至少一张菜品或菜单素材。", document.querySelector('[data-add-files="dish"]'));
   error.hidden = true;
   status.className = "status inline-status success";
   status.textContent = "资料已收集完成，请在首页确认后直接生成。";
