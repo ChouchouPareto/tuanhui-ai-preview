@@ -153,9 +153,8 @@ def start_analysis(project_id: str, background: BackgroundTasks, payload: Analys
     roles = set(db.scalars(select(SourceAsset.semantic_role).where(SourceAsset.project_id == project_id)).all())
     has_store_asset = bool(roles & {"storefront", "environment", "logo"})
     has_dish_asset = bool(roles & {"menu", "signature_dish", "dish"})
-    if not has_store_asset or not has_dish_asset:
-        missing = "门店素材" if not has_store_asset else "菜品或菜单素材"
-        raise HTTPException(status_code=409, detail=f"进入确认事实前请先上传{missing}")
+    if not has_dish_asset:
+        raise HTTPException(status_code=409, detail="进入确认事实前请先上传菜品或菜单素材")
     use_ai = bool(payload and payload.use_ai)
     task = WorkflowTask(project_id=project_id, task_type="asset_analysis" if use_ai else "dialogue_intake")
     db.add(task)

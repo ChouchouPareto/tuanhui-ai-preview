@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import router
+from app.creation_api import router as creation_router
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.database import SessionLocal
@@ -19,14 +20,15 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="团绘AI Stage 3 API", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="团绘AI M1 API", version="0.5.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=[item.strip() for item in settings.allowed_origins.split(",")], allow_methods=["*"], allow_headers=["*"])
 app.include_router(router)
+app.include_router(creation_router)
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "stage": "3", "default_flow": "dialogue", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
+    return {"status": "ok", "version": "0.5.0", "stage": "M1-rules-internal", "default_flow": "intake-confirmation", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
 
 
 @app.exception_handler(Exception)

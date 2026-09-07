@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiRequest, apiUrl } from "../../lib/api-client";
 
@@ -23,7 +24,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     let disposed = false;
     const id = new URLSearchParams(window.location.search).get("project");
-    setLoading(true); setError("");
+    queueMicrotask(() => { if (!disposed) { setLoading(true); setError(""); } });
     const request = id ? Promise.all([apiRequest<Workspace>(`/projects/${id}/workspace`), apiRequest<Asset[]>(`/projects/${id}/assets`)]).then(([w, a]) => { if (!disposed) { setWorkspace(w); setAssets(a); } }) : apiRequest<Project[]>("/projects").then(p => { if (!disposed) setProjects(p); });
     void request.catch(e => { if (!disposed) setError(e.message); }).finally(() => { if (!disposed) setLoading(false); });
     return () => { disposed = true; };
@@ -31,7 +32,7 @@ export default function ProjectsPage() {
   const compose = workspace ? `/?project=${workspace.id}&compose=1` : "/";
   const fields: Record<string, string> = { store_name: "门店名称", positioning: "门店定位", hero_item: "主推内容", hero_price: "套餐价格", selling_points: "卖点" };
   return <main className="projectHub">
-    <nav className="projectBreadcrumb" aria-label="导航"><a href="/">团绘AI · 创作首页</a><span>/</span><a href="/projects">我的项目</a>{workspace && <><span>/</span><span>{workspace.name}</span></>}</nav>
+    <nav className="projectBreadcrumb" aria-label="导航"><Link href="/">团绘AI · 创作首页</Link><span>/</span><a href="/projects">我的项目</a>{workspace && <><span>/</span><span>{workspace.name}</span></>}</nav>
     <header className="projectHeader"><div><small>PROJECT WORKSPACE</small><h1>{workspace?.name || "我的项目"}</h1><p>{workspace ? "素材、品牌资料与每一次创作，都保留在这个项目里。" : "从一家门店开始，让每一次创作保持一致。"}</p></div><div className="projectActions"><button onClick={() => setRevision(v => v + 1)} disabled={loading}>刷新</button><a className="projectPrimary" href={compose}>{workspace ? "继续创作" : "新建项目"}</a></div></header>
     {error && <p role="alert" className="projectError">{error} · 请确认本地后端已启动，可点击刷新重试。</p>}
     {loading ? <p role="status" className="projectEmpty">正在读取项目…</p> : !error && <>

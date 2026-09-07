@@ -22,7 +22,8 @@ def _has_value(value) -> bool:
 
 
 def coverage_for(facts: dict) -> dict:
-    missing = [key for key in CORE_FIELDS if not _has_value(facts.get(key))]
+    missing = [key for key in CORE_FIELDS if not _has_value(facts.get(key))
+               and not (key == "hero_price" and facts.get("show_price") is False)]
     return {
         "present_fields": [key for key in CORE_FIELDS if key not in missing],
         "missing_fields": missing,

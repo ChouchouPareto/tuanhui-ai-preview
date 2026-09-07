@@ -16,6 +16,7 @@ function getErrorMessage(body: unknown): string {
   if (!body || typeof body !== "object") return "请求失败，请稍后重试";
   const record = body as Record<string, unknown>;
   if (typeof record.detail === "string") return record.detail;
+  if (record.detail && typeof record.detail === "object" && "message" in record.detail) return String(record.detail.message);
   if (record.error && typeof record.error === "object") {
     const message = (record.error as Record<string, unknown>).message;
     if (typeof message === "string") return message;

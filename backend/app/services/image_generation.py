@@ -115,11 +115,16 @@ def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()
 
 
 def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan: DesignPlan, provider: str, allow_fallback: bool):
+    db.refresh(task)
+    if task.status == TaskStatus.NEEDS_USER:
+        return
     task.status = TaskStatus.RUNNING
     task.progress = 8
     project.status = ProjectStatus.GENERATING
     db.commit()
     assets = db.scalars(select(SourceAsset).where(SourceAsset.project_id == project.id).order_by(SourceAsset.is_hero.desc(), SourceAsset.priority, SourceAsset.created_at)).all()
+    if "selected_asset_ids" in plan.plan:
+        assets = [a for a in assets if a.id in plan.plan["selected_asset_ids"]]
     dishes = eligible_dishes(assets)
     if not dishes:
         task.status = TaskStatus.FAILED_FINAL

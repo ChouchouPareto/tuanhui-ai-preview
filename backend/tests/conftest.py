@@ -1,10 +1,12 @@
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
-Path("./data").mkdir(parents=True, exist_ok=True)
-os.environ["DATABASE_URL"] = "sqlite:///./data/test_tuanhui.db"
-os.environ["UPLOAD_DIR"] = "./data/test_uploads"
+TEST_ROOT = Path(tempfile.mkdtemp(prefix="tuanhui-tests-"))
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_ROOT / 'tests.db'}"
+os.environ["UPLOAD_DIR"] = str(TEST_ROOT / "uploads")
+os.environ["GENERATED_DIR"] = str(TEST_ROOT / "generated")
 os.environ["ANALYZER_MODE"] = "mock"
 
 import pytest
@@ -18,7 +20,7 @@ from app.main import app
 def clean_database():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    shutil.rmtree(Path("./data/test_uploads"), ignore_errors=True)
+    shutil.rmtree(TEST_ROOT / "uploads", ignore_errors=True)
     yield
 
 

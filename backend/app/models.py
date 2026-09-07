@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -14,6 +14,44 @@ def new_id() -> str:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class Creation(Base):
+    __tablename__ = "creations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), index=True)
+    mode: Mapped[str] = mapped_column(String(20), default="oneclick")
+    revision: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(30), default="DRAFT")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class IntakeRevision(Base):
+    __tablename__ = "intake_revisions"
+    __table_args__ = (UniqueConstraint("creation_id", "revision"), UniqueConstraint("creation_id", "request_key"))
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    creation_id: Mapped[str] = mapped_column(ForeignKey("creations.id"), index=True)
+    revision: Mapped[int] = mapped_column(Integer)
+    request_key: Mapped[str] = mapped_column(String(120))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    snapshot_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class CreationConfirmation(Base):
+    __tablename__ = "creation_confirmations"
+    __table_args__ = (UniqueConstraint("creation_id", "revision"), UniqueConstraint("creation_id", "request_key"))
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    creation_id: Mapped[str] = mapped_column(ForeignKey("creations.id"), index=True)
+    revision: Mapped[int] = mapped_column(Integer)
+    request_key: Mapped[str] = mapped_column(String(120))
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    task_id: Mapped[str] = mapped_column(ForeignKey("workflow_tasks.id"), unique=True)
+    plan_id: Mapped[str] = mapped_column(ForeignKey("design_plans.id"))
+    state: Mapped[str] = mapped_column(String(30), default="QUEUED")
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class ProjectStatus(str, enum.Enum):

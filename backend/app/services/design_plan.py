@@ -18,11 +18,11 @@ def _text(value, fallback="待确认") -> str:
 
 def build_design_plan(facts: dict, style: str = "appetite") -> dict:
     preset = STYLE_PRESETS.get(style, STYLE_PRESETS["appetite"])
-    store_name = _text(facts.get("store_name"))
+    store_name = _text(facts.get("store_name"), "") if facts.get("show_store_name", True) else ""
     hero_item = _text(facts.get("hero_item"))
-    positioning = _text(facts.get("positioning"))
+    positioning = _text(facts.get("positioning"), "")
     selling_points = [str(item).strip() for item in facts.get("selling_points", []) if str(item).strip()]
-    hero_price = _text(facts.get("hero_price"), "价格不展示")
+    hero_price = _text(facts.get("hero_price"), "") if facts.get("show_price", True) else ""
     primary_point = selling_points[0] if selling_points else positioning
     secondary_point = selling_points[1] if len(selling_points) > 1 else positioning
     frames = [
