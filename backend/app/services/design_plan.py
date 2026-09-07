@@ -4,7 +4,7 @@ from copy import deepcopy
 STYLE_PRESETS = {
     "appetite": {"name": "食欲冲击", "keywords": ["高饱和食欲色", "菜品近景", "热气氛围", "粗体标题"]},
     "brand": {"name": "品牌质感", "keywords": ["品牌主色", "留白克制", "材质细节", "官方表达"]},
-    "street": {"name": "烟火市井", "keywords": ["门店实景", "暖色灯光", "真实就餐感", "生活化构图"]},
+    "street": {"name": "烟火市井", "keywords": ["暖棕底色", "暖色光影", "真实菜品", "生活化构图"]},
     "minimal": {"name": "清爽简约", "keywords": ["浅色背景", "信息聚焦", "简洁排版", "轻量装饰"]},
 }
 
@@ -26,13 +26,14 @@ def build_design_plan(facts: dict, style: str = "appetite") -> dict:
     primary_point = selling_points[0] if selling_points else positioning
     secondary_point = selling_points[1] if len(selling_points) > 1 else positioning
     frames = [
-        {"index": 1, "role": "品牌开场", "headline": store_name, "support": positioning, "visual": "门头或品牌标识，建立门店识别"},
+        {"index": 1, "role": "品牌主题", "headline": store_name, "support": positioning, "visual": "统一母版上的品牌文字；门头照片仅用于识别，禁止入画"},
         {"index": 2, "role": "主推菜", "headline": hero_item, "support": primary_point, "visual": "主推菜大图，突出真实食材与食欲感"},
-        {"index": 3, "role": "核心卖点", "headline": primary_point, "support": secondary_point, "visual": "菜品细节与制作氛围，强化可信卖点"},
-        {"index": 4, "role": "套餐价值", "headline": hero_price, "support": hero_item, "visual": "套餐组合或菜单信息，价格只使用已确认内容"},
-        {"index": 5, "role": "到店收束", "headline": store_name, "support": positioning, "visual": "门店环境或招牌菜组合，完成品牌记忆"},
+        {"index": 3, "role": "连续主视觉", "headline": primary_point, "support": secondary_point, "visual": "与左右相连的真实菜品素材区域，不生成独立场景"},
+        {"index": 4, "role": "菜品展示", "headline": hero_item, "support": primary_point, "visual": "按实际素材数量延展主视觉，不添加未提供的菜品或饮料"},
+        {"index": 5, "role": "品牌收束", "headline": hero_price, "support": hero_item, "visual": "同一背景中的已确认文字信息，不生成店内环境"},
     ]
     return {
+        "template_version": "continuous-food-master-v1",
         "canvas": {"ratio": "20:3", "recommended_size": "4000x600", "slice_count": 5, "slice_ratio": "4:3", "slice_size": "800x600"},
         "style": {"key": style, **deepcopy(preset)},
         "copy": {"headline": hero_item, "subheadline": primary_point, "store_name": store_name, "price": hero_price},

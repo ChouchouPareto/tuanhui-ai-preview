@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import DesignPlan, ModelCallRecord, ProjectStatus, SourceAsset, StoreProject, TaskStatus, WorkflowTask, utc_now
+from app.services.master_layout import compose_master, eligible_dishes, save_manifest
 
 
 class ImageGenerationError(RuntimeError):
@@ -29,15 +30,12 @@ def _reference_data(asset: SourceAsset) -> str:
 
 
 def build_visual_prompt(plan: dict) -> str:
-    locked = plan["locked_facts"]
-    frame_notes = "；".join(f"第{item['index']}屏{item['role']}：{item['visual']}" for item in plan["frames"])
     return (
-        f"为中国大陆本地生活团购首页制作一张横向连续五联视觉底图，整体宽高比20:3，五个4:3画面无缝连接。"
-        f"门店类型与定位：{locked['positioning']}。主推内容：{locked['hero_item']}。"
-        f"视觉风格：{plan['style']['name']}，{','.join(plan['style']['keywords'])}。"
-        f"分屏安排：{frame_notes}。参考图片只用于保持真实菜品、门头、环境与品牌特征，不得替换菜品种类。"
-        "画面中不要出现任何文字、字母、数字、价格、招牌字、Logo文字或水印，所有文字将在后期排版。"
-        "专业商业摄影与本地生活团购头图质感，统一光影、统一色调、跨屏元素自然延续，每屏主体完整且切割线附近避免关键主体。"
+        "生成一张横向20:3的连续抽象商业设计背景，只生成低对比度纹理和轻量装饰。"
+        f"主题风格：{plan['style']['name']}。一个统一背景，光影和纹理横向连续。"
+        "不是五张照片拼接，不要分屏、拼贴、边框。中部与两侧大面积留白。"
+        "禁止出现门头、建筑、店内环境、招牌、人物、食物、菜品、餐具、饮料、文字、数字、Logo、水印。"
+        "真实菜品、门店名称和价格由后续排版工具加入，不由你绘制。"
     )
 
 
@@ -101,18 +99,11 @@ def _font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
-def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path) -> dict:
+def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     with Image.open(io.BytesIO(image_bytes)) as source:
-        canvas = ImageOps.fit(source.convert("RGB"), (4000, 600), method=Image.Resampling.LANCZOS)
-    draw = ImageDraw.Draw(canvas, "RGBA")
-    title_font, support_font, role_font = _font(45, True), _font(22), _font(17, True)
-    for frame in plan["frames"]:
-        left = (frame["index"] - 1) * 800
-        draw.rounded_rectangle((left + 34, 360, left + 766, 566), radius=22, fill=(0, 0, 0, 145))
-        draw.text((left + 64, 382), frame["role"], font=role_font, fill=(255, 255, 255, 185))
-        draw.text((left + 64, 417), frame["headline"][:16], font=title_font, fill="white", stroke_width=1, stroke_fill=(0, 0, 0, 100))
-        draw.text((left + 64, 490), frame["support"][:26], font=support_font, fill=(255, 255, 255, 220))
+        canvas = compose_master(source, plan, assets, _font)
+    save_manifest(output_dir, plan, assets)
     long_path = output_dir / "long.png"
     canvas.save(long_path, format="PNG", optimize=True)
     slices = []
@@ -129,7 +120,26 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
     project.status = ProjectStatus.GENERATING
     db.commit()
     assets = db.scalars(select(SourceAsset).where(SourceAsset.project_id == project.id).order_by(SourceAsset.is_hero.desc(), SourceAsset.priority, SourceAsset.created_at)).all()
-    references = list(assets[:3])
+    dishes = eligible_dishes(assets)
+    if not dishes:
+        task.status = TaskStatus.FAILED_FINAL
+        task.error_code = "DISH_ASSET_REQUIRED"
+        task.error_message = "请上传并归类至少一张真实菜品图。门头和菜单仅供识别，不用于生成画面。"
+        project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
+        db.commit()
+        return
+    try:
+        # Validate local assets and text before any paid model request.
+        compose_master(Image.new("RGB", (4000, 600)), plan.plan, dishes, _font)
+    except (OSError, ValueError) as exc:
+        task.status = TaskStatus.FAILED_FINAL
+        task.error_code = "MASTER_PREFLIGHT_FAILED"
+        task.error_message = f"生成前检查未通过：{exc}"
+        project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
+        db.commit()
+        return
+    # No uploaded photos leave for background generation; compose real dishes locally.
+    references = []
     prompt = build_visual_prompt(plan.plan)
     providers = [provider]
     if allow_fallback:
@@ -142,7 +152,7 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
             db.commit()
             return
         started = time.monotonic()
-        record = ModelCallRecord(project_id=project.id, task_id=task.id, provider=candidate, model=settings.qwen_image_model if candidate == "qwen" else settings.doubao_image_model, contract="group_buying_long_image_v1", status="RUNNING")
+        record = ModelCallRecord(project_id=project.id, task_id=task.id, provider=candidate, model=settings.qwen_image_model if candidate == "qwen" else settings.doubao_image_model, contract="continuous_food_background_v1", status="RUNNING")
         db.add(record)
         db.commit()
         try:
@@ -157,7 +167,7 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
                 return
             task.progress = 76
             db.commit()
-            result = render_and_slice(raw, plan.plan, settings.generated_dir / project.id / task.id)
+            result = render_and_slice(raw, plan.plan, settings.generated_dir / project.id / task.id, dishes)
             db.refresh(task)
             if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
                 record.status = "CANCELLED"

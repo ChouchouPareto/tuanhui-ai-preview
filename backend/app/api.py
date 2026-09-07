@@ -34,6 +34,31 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
     return {"project_id": project.id, "status": project.status}
 
 
+@router.get("/projects")
+def list_projects(db: Session = Depends(get_db)):
+    projects = db.scalars(select(StoreProject).order_by(StoreProject.updated_at.desc())).all()
+    result = []
+    for project in projects:
+        tasks = db.scalars(select(WorkflowTask).where(WorkflowTask.project_id == project.id, WorkflowTask.task_type == "group_buying_image_generation").order_by(WorkflowTask.created_at.desc())).all()
+        cover = next((t for t in tasks if t.status == TaskStatus.SUCCEEDED and (t.result or {}).get("long_image")), None)
+        result.append({"id": project.id, "name": project.name, "status": project.status,
+                       "updated_at": project.updated_at, "task_count": len(tasks),
+                       "cover": f"/projects/{project.id}/generations/{cover.id}/assets/{cover.result['long_image']}" if cover else None})
+    return result
+
+
+@router.get("/projects/{project_id}/workspace")
+def project_workspace(project_id: str, db: Session = Depends(get_db)):
+    project = require_project(db, project_id)
+    tasks = db.scalars(select(WorkflowTask).where(WorkflowTask.project_id == project_id, WorkflowTask.task_type == "group_buying_image_generation").order_by(WorkflowTask.created_at.desc())).all()
+    fact = db.scalar(select(FactVersion).where(FactVersion.project_id == project_id).order_by(FactVersion.version.desc()))
+    plan = db.scalar(select(DesignPlan).where(DesignPlan.project_id == project_id).order_by(DesignPlan.version.desc()))
+    return {"id": project.id, "name": project.name, "facts": fact.facts if fact else {},
+            "style": plan.plan.get("style") if plan else None,
+            "tasks": [{"id": t.id, "status": t.status, "created_at": t.created_at,
+                       "progress": t.progress, "result": t.result or {}, "error": t.error_message} for t in tasks]}
+
+
 @router.get("/projects/{project_id}")
 def get_project(project_id: str, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
