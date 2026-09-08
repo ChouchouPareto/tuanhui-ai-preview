@@ -4,6 +4,14 @@
   --purple: #8b5cf6; --success: #18794e; --danger: #c7362f; --radius-control: 12px;
   --radius-card: 24px; --radius-panel: 30px; --shadow-float: 0 22px 70px rgba(0,0,0,.07);
 }
+.intakeSummary { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 12px 0; }
+.intakeSummary > div { display: flex; min-width: 0; gap: 12px; }.intakeSummary dt { color: var(--muted); flex-shrink: 0; }.intakeSummary dd { margin: 0; overflow-wrap: anywhere; }
+.intakeQuestions { margin: 12px 0; }.intakeQuestions p { color: var(--muted); margin: 8px 0; }
+.intakeQuestions button { min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-subtle); padding: 8px 14px; margin: 0 8px 8px 0; text-align: left; }
+.intakeReplyLabel { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; margin-bottom: 8px; color: var(--muted); }
+.intakeReplyLabel button { background: transparent; border: 0; min-height: 32px; cursor: pointer; }
+.quickPrompt:has(.intakeReplyLabel) { display: flex; flex-direction: column; }
+.intakeAiOption { font-size: 12px; color: var(--muted); margin-top: 8px; }.intakeAiOption summary { cursor: pointer; padding: 8px 0; }.intakeAiOption label { display: flex; align-items: center; gap: 8px; min-height: 44px; }.intakeAiOption small { display: block; }
 .inlineReview { max-width: 1280px; margin: -1px auto 24px; padding: 20px 28px; background: var(--surface); border-radius: 0 0 24px 24px; color: var(--ink); font-size: 14px; border-top: 1px solid var(--line); }
 .quickCreationHome:has(.inlineReview) .quickComposer { border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: none; }
 .inlineReviewHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }

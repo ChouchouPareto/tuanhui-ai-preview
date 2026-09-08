@@ -13,7 +13,7 @@ from app.models import Creation, FactVersion, IntakeRevision, SourceAsset
 
 
 LABELS = {"store_name": "店名", "hero_item": "主推菜品", "positioning": "门店特色", "selling_points": "真实卖点", "hero_price": "价格"}
-ALIASES = {"store_name": "店名|门店名称|门店", "hero_item": "主推菜品|主推内容|主推|菜名|菜品", "positioning": "门店特色|定位", "selling_points": "真实卖点|核心卖点|卖点", "hero_price": "价格|售价|套餐价格"}
+ALIASES = {"store_name": "店名|门店名称|门店|店铺名称", "hero_item": "主推菜品或套餐|主推菜品|主推套餐|主推内容|招牌菜|主推|菜名|菜品", "positioning": "门店特色|门店定位|定位", "selling_points": "特色与卖点|真实卖点|核心卖点|卖点", "hero_price": "真实价格|套餐价格|价格|售价"}
 
 
 class CreateInput(BaseModel):
@@ -32,6 +32,9 @@ class IntakeInput(BaseModel):
     style: Literal["appetite", "brand", "street", "minimal"] = "appetite"
     provider: Literal["qwen", "doubao"] = "qwen"
     use_ai: bool = False
+    accepted_understanding_policy: Literal["text-understanding-paid-v1"] | None = None
+    input_mode: Literal["merge", "replace", "reply"] = "merge"
+    reply_field: Literal["store_name", "hero_item", "positioning", "selling_points", "hero_price"] | None = None
 
 
 class ConfirmInput(BaseModel):
@@ -79,10 +82,21 @@ def asset_manifest(assets):
 
 def parse_text(text):
     values = {}
-    for key, labels in ALIASES.items():
-        matches = re.findall(rf"(?:^|[\n；;，,])\s*(?:{labels})\s*[:：]\s*([^\n；;，,]+)", text)
-        if matches:
-            values[key] = matches[-1].strip()
+    # Conservative clause extraction: accept common explicit expressions, not guessed facts.
+    for clause in re.split(r"[\n；;，,。！!]", text):
+        clause = clause.strip()
+        for key, labels in ALIASES.items():
+            match = re.match(rf"^(?:我的|我们|这次|本次|请把|把)?\s*(?:{labels})\s*(?::|：|改为|改成|换成|叫做|叫|是|为|做)?\s*(.+)$", clause)
+            if match:
+                value = match[1].strip(" ：:")
+                if value and len(value) <= 500 and not re.search(r"^(?:不|没有|待定|待确认|不知道|未定|不确定|待补充|待识别)", value):
+                    values[key] = value
+        named = re.match(r"^(?:我的|我们)?(?:店|店铺|餐厅)(?:叫做|叫|名叫)\s*(.+)$", clause)
+        if named:
+            values["store_name"] = named[1].strip()
+        price = re.fullmatch(r"(?:套餐|双人餐)?\s*(\d+(?:\.\d{1,2})?)\s*元", clause)
+        if price:
+            values["hero_price"] = price[1] + "元"
     return values
 
 
@@ -101,33 +115,76 @@ def evaluate(facts, manifest, show_price=False, show_store_name=True):
 
 
 def compile_intake(db, creation, payload):
-    if payload.use_ai:
-        fail("AI_INTAKE_NOT_ENABLED", "AI整理费用与真实模型验收尚未启用；请填写确认卡，不会调用模型")
+    if payload.use_ai and not payload.accepted_understanding_policy:
+        fail("AI_AUTHORIZATION_REQUIRED", "智能理解需先明确同意本次模型费用，不会自动调用")
     if any(key not in LABELS or len(value) > 500 for key, value in payload.answers.items()):
         fail("INVALID_ANSWERS", "补充字段不支持或内容过长", 422)
     old = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
+    manifest = asset_manifest(selected_assets(db, creation.project_id, payload.asset_ids))
     memory = db.scalar(select(FactVersion).where(FactVersion.project_id == creation.project_id, FactVersion.confirmed_at.is_not(None)).order_by(FactVersion.version.desc()))
     facts = {key: value for key, value in (memory.facts if memory else {}).items() if key in LABELS}
     sources = {key: "project_confirmed" for key in facts}
-    if old:
+    if old and payload.input_mode != "replace":
         facts.update(old.snapshot["facts"])
         sources.update(old.snapshot["sources"])
     extracted = parse_text(payload.text)
+    uncertain = []
+    if payload.use_ai:
+        from app.services.intake_understanding import understand
+        from app.services.model_gateway import ModelGatewayError
+        try:
+            understood = understand(db, creation, payload.text, digest(payload.model_dump()))
+        except ModelGatewayError as exc:
+            fail(exc.code, exc.safe_message)
+        extracted.update(understood["facts"])
+        uncertain = understood["uncertain_fields"]
+        for key in uncertain:
+            extracted.pop(key, None)
+            facts.pop(key, None)
+    text = payload.text.strip()
+    if payload.input_mode == "reply":
+        if not old:
+            fail("REPLY_WITHOUT_CONTEXT", "请先提交创作需求", 422)
+        if payload.reply_field and not extracted and payload.reply_field not in uncertain:
+            value = text.strip()
+            if not value or len(value) > 500 or re.search(r"不知道|不确定|待定|随便|你决定", value):
+                fail("ANSWER_UNRESOLVED", "这项信息还无法确定，请在原输入框补充真实内容", 422)
+            extracted[payload.reply_field] = value
+            text = f"{LABELS[payload.reply_field]}：{value}"
+        text = old.snapshot["text"] + "\n" + text
+    if len(text) > 8000:
+        fail("INPUT_TOO_LONG", "需求过长，请精简后重新提交", 422)
     facts.update(extracted)
     sources.update({key: "user_text" for key in extracted})
     facts.update({key: value.strip() for key, value in payload.answers.items()})
     sources.update({key: "user_answer" for key in payload.answers})
-    show_price = payload.show_price and (bool(payload.answers) or not re.search(r"不(?:展示|显示|标注|标|写)价格", payload.text))
+    show_price = payload.show_price
+    show_store = payload.show_store_name
+    if payload.input_mode != "merge":
+        show_price = bool(extracted.get("hero_price")) if payload.input_mode == "replace" else bool(old and old.snapshot["show_price"])
+        show_store = True if payload.input_mode == "replace" else bool(old and old.snapshot["show_store_name"])
+        if extracted.get("hero_price"):
+            show_price = True
+        for directive in re.finditer(r"(不展示|不显示|不标注|不写|不要显示|不要展示|展示|显示|标注)\s*(价格|店名)", payload.text):
+            flag = not directive[1].startswith(("不", "不要"))
+            if directive[2] == "价格": show_price = flag
+            else: show_store = flag
+    else:
+        show_price = show_price and (bool(payload.answers) or not re.search(r"不(?:展示|显示|标注|标|写)价格", payload.text))
     if not show_price:
         facts["hero_price"] = ""
-    manifest = asset_manifest(selected_assets(db, creation.project_id, payload.asset_ids))
-    gaps = evaluate(facts, manifest, bool(show_price), payload.show_store_name)
+    gaps = evaluate(facts, manifest, bool(show_price), show_store)
+    for key in ("store_name", "hero_item", "hero_price"):
+        if (key == "store_name" and not show_store) or (key == "hero_price" and not show_price):
+            continue
+        if re.search(r"或者|还是|不确定|待定|或", str(facts.get(key, ""))):
+            gaps.append({"field": key, "question": f"{LABELS[key]}有多个选择，请在原输入框明确本次使用哪一个", "kind": "conflict"})
     changes = [key for key in facts if memory and key in memory.facts and facts[key] != memory.facts[key] and sources.get(key) != "project_confirmed"]
-    return {"schema_version": 1, "text": payload.text, "facts": facts, "sources": sources,
-            "assets": manifest, "show_price": bool(show_price), "show_store_name": payload.show_store_name,
+    return {"schema_version": 2, "text": text, "facts": facts, "sources": sources,
+            "assets": manifest, "show_price": bool(show_price), "show_store_name": show_store,
             "style": payload.style, "provider": payload.provider, "gaps": gaps,
             "project_changes": changes, "scope": "this_creation_only", "ready": not gaps,
-            "interpretation": "rules_and_user_confirmation", "budget_policy": "local-paid-generation-v1"}
+            "interpretation": "ai_grounded_text" if payload.use_ai else "rules_and_user_confirmation", "budget_policy": "local-paid-generation-v1"}
 
 
 def review(db, creation):

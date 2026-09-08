@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { M1Review, IntakeSeed } from "./m1-review";
+import { M1Review, IntakeSeed, IntakeController } from "./m1-review";
 import { ReferenceCategory, ReferenceThumbnail } from "./reference-thumbnail";
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { apiRequest, apiUrl, jsonRequest } from "../lib/api-client";
@@ -314,6 +314,11 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   const [brief, setBrief] = useState("");
   const [storeItems, setStoreItems] = useState<PendingUpload[]>([]);
   const [dishItems, setDishItems] = useState<PendingUpload[]>([]);
+  const intakeController = useRef<IntakeController>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+  const [replyField, setReplyField] = useState<string | null>(null);
+  const [replyBackup, setReplyBackup] = useState("");
+  const [useAi, setUseAi] = useState(false);
   const [assetDialog, setAssetDialog] = useState<"all" | "store" | "dish" | null>(null);
   const [excluded, setExcluded] = useState<string[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
@@ -372,10 +377,9 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const confirmation = mode === "oneclick" ? document.getElementById("inline-confirmation") : null;
-    if (confirmation) { confirmation.scrollIntoView({ block: "center", behavior: "auto" }); confirmation.focus(); return; }
+    if (mode === "oneclick" && intakeController.current) { await intakeController.current.revise(); return; }
     const name = detectedName();
-    if (!brief.trim()) { setError("请描述本次想制作的内容，缺少的信息可以在确认卡补充"); return; }
+    if (!brief.trim()) { setError("请描述本次想制作的内容，缺少的信息也在这个输入框补充"); return; }
     if (mode === "professional" && !name) { setError("请在文字中写明“门店名称：×××”"); return; }
     if (mode === "professional" && !savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
     setError("");
@@ -412,7 +416,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           {dishGroup}
           <button type="button" className="quickAssetExpand" aria-label="展开参考素材" data-tooltip="展开参考素材" onClick={() => setAssetDialog("all")}><Icon name="arrow" size={14} /></button>
         </div>
-        <label className="quickPrompt"><span className="srOnly">创作需求</span><textarea value={brief} maxLength={1000} disabled={busy} placeholder="先描述本次需求，可稍后集中补充。例如：店名：山城酸菜鱼；主推：酸菜鱼双人餐；不展示价格。菜品实拍用于成品，门头仅用于识别。" onChange={(event) => setBrief(event.target.value)} /></label>
+        <div className="quickPrompt"><label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"主推菜品",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "例如：我的店叫山城酸菜鱼，主推酸菜鱼双人餐，99元，不展示价格。也可以在这里直接修改需求。"} onChange={(event) => setBrief(event.target.value)} />{mode === "oneclick" && <details className="intakeAiOption"><summary>复杂描述的理解选项</summary><label><input type="checkbox" checked={useAi} onChange={e => setUseAi(e.target.checked)} />智能理解本次文字（同意本次模型费用）</label><small>只发送本次文字，不上传图片；发送后最多调用一次，失败不自动重试。</small></details>}</div>
       </div>
       <div className="quickComposerToolbar" ref={toolbarRef}>
         <div className="quickToolbarStart">
@@ -436,11 +440,15 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
     {mode === "oneclick" && coverage && !generationTask && designPlan?.status !== "CONFIRMED" && <QuickFactConfirmation key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={onSubmitFacts} onConfirmAndGenerate={() => onConfirmAndGenerate(style, model)} />}
     {mode === "oneclick" && (designPlan?.status === "CONFIRMED" || generationTask) && <div className="quickGenerationPanel"><GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={onGenerateExisting} onPause={onPause} /></div>}
     {mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
-      hasDish={dishItems.length > 0 || selectedSaved.some(({ asset }) => asset.asset_type === "product" && ["dish", "signature_dish"].includes(asset.semantic_role))}
-      contextKey={JSON.stringify([brief, model, style, excluded, restoredSelection, localAssets.map(a => a.id)])}
+      controller={intakeController}
+      draft={{ text: brief, assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
+        style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string,string>)[style] ?? "appetite",
+        provider: model.includes("豆包") ? "doubao" : "qwen" }}
+      onReply={field => { if (field) { setReplyBackup(brief); setBrief(""); setReplyField(field); } else if (replyField) { setBrief(replyBackup); setReplyField(null); } promptRef.current?.focus(); promptRef.current?.scrollIntoView({block:"center",behavior:"auto"}); }}
       onBusy={setReviewBusy}
       onRestore={snapshot => {
         setBrief(snapshot.text.split("\n视觉风格：")[0]);
+        setReplyField(null); setUseAi(false);
         setStyle(({ brand: "品牌质感", street: "烟火市井", minimal: "清爽简约" } as Record<string, string>)[snapshot.style] ?? QUICK_OPTIONS.style[0]);
         setModel(snapshot.provider === "doubao" ? "豆包" : QUICK_OPTIONS.model[0]);
         setRestoredSelection(snapshot.assets.map(a => a.id));
@@ -452,7 +460,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         const newIds = all.filter(a => !assets.some(old => old.id === a.id)).map(a => a.id);
         pending.forEach(a => URL.revokeObjectURL(a.previewUrl)); setStoreItems([]); setDishItems([]);
         if (restoredSelection) setRestoredSelection(ids => [...(ids ?? []), ...newIds]);
-        return { text: brief, assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
+        return { text: brief, replyField, useAi, assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
           style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string, string>)[style] ?? "appetite",
           provider: model.includes("豆包") ? "doubao" : "qwen" };
       }} />}
