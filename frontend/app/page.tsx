@@ -310,11 +310,14 @@ function QuickFactConfirmation({ coverage, busy, onSubmit, onConfirmAndGenerate 
   </section>;
 }
 
-function QuickCreationHome({ mode, projectId, projectName, assets, coverage, generationTask, designPlan, busy, message, messageTone, onSubmit, onSubmitFacts, onConfirmAndGenerate, onGenerateExisting, onOpenOneClick, onOpenProfessional, onOpenLibrary, onPause, reviewPanel }: { mode: CreationView; projectId: string; projectName: string; assets: Asset[]; coverage: Coverage | null; generationTask: GenerationTask | null; designPlan: DesignPlan | null; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean>; onSubmitFacts: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: (style: string, model: string) => void; onGenerateExisting: () => void; onOpenOneClick: () => void; onOpenProfessional: () => void; onOpenLibrary: (tab: LibraryTab) => void; onPause: () => void; reviewPanel?: ReactNode }) {
+function QuickCreationHome({ mode, projectId, projectName, assets, coverage, generationTask, designPlan, busy, message, messageTone, onSubmit, onSubmitFacts, onConfirmAndGenerate, onGenerateExisting, onOpenOneClick, onOpenProfessional, onOpenLibrary, onPause, intakeSeed, onPrepareAssets }: { mode: CreationView; projectId: string; projectName: string; assets: Asset[]; coverage: Coverage | null; generationTask: GenerationTask | null; designPlan: DesignPlan | null; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean>; onSubmitFacts: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: (style: string, model: string) => void; onGenerateExisting: () => void; onOpenOneClick: () => void; onOpenProfessional: () => void; onOpenLibrary: (tab: LibraryTab) => void; onPause: () => void; intakeSeed?: IntakeSeed | null; onPrepareAssets?: (items: PendingUpload[]) => Promise<Asset[]> }) {
   const [brief, setBrief] = useState("");
   const [storeItems, setStoreItems] = useState<PendingUpload[]>([]);
   const [dishItems, setDishItems] = useState<PendingUpload[]>([]);
   const [assetDialog, setAssetDialog] = useState<"all" | "store" | "dish" | null>(null);
+  const [excluded, setExcluded] = useState<string[]>([]);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [restoredSelection, setRestoredSelection] = useState<string[] | null>(null);
   const [model, setModel] = useState(QUICK_OPTIONS.model[0]);
   const [style, setStyle] = useState(QUICK_OPTIONS.style[0]);
   const [layout, setLayout] = useState(QUICK_OPTIONS.layout[0]);
@@ -369,6 +372,8 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const confirmation = mode === "oneclick" ? document.getElementById("inline-confirmation") : null;
+    if (confirmation) { confirmation.scrollIntoView({ block: "center", behavior: "auto" }); confirmation.focus(); return; }
     const name = detectedName();
     if (!brief.trim()) { setError("请描述本次想制作的内容，缺少的信息可以在确认卡补充"); return; }
     if (mode === "professional" && !name) { setError("请在文字中写明“门店名称：×××”"); return; }
@@ -386,20 +391,21 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   });
   const visibleSavedAssets = savedReferenceAssets.filter((item) => assetDialog === "all" || item.kind === assetDialog);
 
+  const selectedSaved = savedReferenceAssets.filter(item => !excluded.includes(item.asset.id) && (!restoredSelection || restoredSelection.includes(item.asset.id)));
   const assetGroup = (kind: "store" | "dish") => {
     const pending = localAssets.filter((item) => item.kind === kind);
-    const saved = savedReferenceAssets.filter((item) => item.kind === kind);
+    const saved = savedReferenceAssets.filter((item) => item.kind === kind && !excluded.includes(item.asset.id) && (!restoredSelection || restoredSelection.includes(item.asset.id)));
     return <>
-        {saved.map(({ asset }) => <ReferenceThumbnail key={asset.id} src={apiUrl(asset.preview_path!)} name={asset.original_name} />)}
+        {saved.map(({ asset }) => <ReferenceThumbnail key={asset.id} src={apiUrl(asset.preview_path!)} name={asset.original_name} onRemove={mode === "oneclick" ? () => setExcluded(ids => [...ids, asset.id]) : undefined} />)}
         {pending.map((item) => <ReferenceThumbnail key={item.id} src={item.previewUrl} name={item.file.name} reading={item.status === "reading"} onRemove={() => removeFile(item.id, kind)} />)}
     </>;
   };
-  const storeGroup = <ReferenceCategory label="门店" count={storeItems.length + savedReferenceAssets.filter((item) => item.kind === "store").length} onAdd={() => storeInputRef.current?.click()}>{assetGroup("store")}</ReferenceCategory>;
-  const dishGroup = <ReferenceCategory label="菜品·菜单" count={dishItems.length + savedReferenceAssets.filter((item) => item.kind === "dish").length} onAdd={() => dishInputRef.current?.click()}>{assetGroup("dish")}</ReferenceCategory>;
+  const storeGroup = <ReferenceCategory label="门店" count={storeItems.length + selectedSaved.filter((item) => item.kind === "store").length} onAdd={() => storeInputRef.current?.click()}>{assetGroup("store")}</ReferenceCategory>;
+  const dishGroup = <ReferenceCategory label="菜品·菜单" count={dishItems.length + selectedSaved.filter((item) => item.kind === "dish").length} onAdd={() => dishInputRef.current?.click()}>{assetGroup("dish")}</ReferenceCategory>;
 
   return <section className="quickCreationHome" aria-labelledby="quick-creation-title">
     <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className={mode === "professional" ? "active" : ""} role="tab" aria-selected={mode === "professional"} onClick={onOpenProfessional}>创作</button><button type="button" className={mode === "oneclick" ? "active" : ""} role="tab" aria-selected={mode === "oneclick"} onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>装修全案</button></div><h1 id="quick-creation-title">让每家门店，都有一套会成交的设计</h1></header>
-    <form className="quickComposer" noValidate onSubmit={submit}>
+    <form className="quickComposer" noValidate onSubmit={submit} aria-busy={reviewBusy} inert={reviewBusy}>
       <div className="quickComposerBody hasReferences">
         <div className="quickAssetRail" aria-label="本次参考素材">
           {storeGroup}
@@ -426,11 +432,31 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
       </div>
       {(error || messageTone === "error") && <p className="quickComposerError" role="alert"><Icon name="close" size={15} />{error || message}</p>}
     </form>
-    <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>
+    {!(mode === "oneclick" && projectId) && <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>}
     {mode === "oneclick" && coverage && !generationTask && designPlan?.status !== "CONFIRMED" && <QuickFactConfirmation key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={onSubmitFacts} onConfirmAndGenerate={() => onConfirmAndGenerate(style, model)} />}
     {mode === "oneclick" && (designPlan?.status === "CONFIRMED" || generationTask) && <div className="quickGenerationPanel"><GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={onGenerateExisting} onPause={onPause} /></div>}
-    {reviewPanel}
-    {!reviewPanel && !coverage && !generationTask && <CreationDiscovery />}
+    {mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
+      hasDish={dishItems.length > 0 || selectedSaved.some(({ asset }) => asset.asset_type === "product" && ["dish", "signature_dish"].includes(asset.semantic_role))}
+      contextKey={JSON.stringify([brief, model, style, excluded, restoredSelection, localAssets.map(a => a.id)])}
+      onBusy={setReviewBusy}
+      onRestore={snapshot => {
+        setBrief(snapshot.text.split("\n视觉风格：")[0]);
+        setStyle(({ brand: "品牌质感", street: "烟火市井", minimal: "清爽简约" } as Record<string, string>)[snapshot.style] ?? QUICK_OPTIONS.style[0]);
+        setModel(snapshot.provider === "doubao" ? "豆包" : QUICK_OPTIONS.model[0]);
+        setRestoredSelection(snapshot.assets.map(a => a.id));
+      }}
+      onAssets={() => setAssetDialog("all")}
+      prepare={async () => {
+        const pending = [...storeItems, ...dishItems];
+        const all = pending.length && onPrepareAssets ? await onPrepareAssets(pending) : assets;
+        const newIds = all.filter(a => !assets.some(old => old.id === a.id)).map(a => a.id);
+        pending.forEach(a => URL.revokeObjectURL(a.previewUrl)); setStoreItems([]); setDishItems([]);
+        if (restoredSelection) setRestoredSelection(ids => [...(ids ?? []), ...newIds]);
+        return { text: brief, assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
+          style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string, string>)[style] ?? "appetite",
+          provider: model.includes("豆包") ? "doubao" : "qwen" };
+      }} />}
+    {!(mode === "oneclick" && projectId) && !coverage && !generationTask && <CreationDiscovery />}
     <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "store")} /><input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "dish")} />
     {assetDialog && <div className="referenceWorkspaceBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAssetDialog(null); }}>
       <button className="referenceWorkspaceClose" type="button" onClick={() => setAssetDialog(null)}><kbd>ESC</kbd><span>关闭</span></button>
@@ -441,7 +467,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           <div className="referenceAssetGrid">{(assetDialog === "all" || assetDialog === "store") && storeGroup}{(assetDialog === "all" || assetDialog === "dish") && dishGroup}</div>
           <span className="referenceCount">共 {visibleSavedAssets.length + visibleDialogItems.length} 张素材</span>
         </aside>
-        <div className="referenceWorkspacePrompt"><p>添加或核对本次创作要引用的门店、菜品和菜单素材。</p><div><button type="button" onClick={() => setAssetDialog(null)}>完成选择</button></div></div>
+        <div className="referenceWorkspacePrompt"><p>菜品图用于成品；门头和菜单仅作参考。移除仅取消本次引用，不删除项目素材。</p>{mode === "oneclick" && (excluded.length > 0 || restoredSelection !== null) && <button type="button" onClick={() => { setExcluded([]); setRestoredSelection(null); }}>重新选入项目素材</button>}<div><button type="button" onClick={() => setAssetDialog(null)}>完成选择</button></div></div>
       </section>
     </div>}
   </section>;
@@ -551,7 +577,7 @@ export default function Home() {
     <main className="mainArea" id="workspace">
       <header className="topbar"><button className="iconButton menuButton" aria-label="打开导航" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button><div className="announcement"><span>NEW</span><b>{activeView === "professional" ? "团绘AI 专业创作" : "团绘AI 一键生图首页"}</b><small>{activeView === "professional" ? "确认事实与设计方案后再生成" : "首页确认真实信息，直接成图"}</small></div><div className="topActions"><span className="tokenBadge"><i /> 内测 · 生图另计费</span><a className="helpButton" href="#guide"><Icon name="help" size={18} />帮助</a></div></header>
       <div className="contentWrap">
-        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeView === "oneclick" ? <QuickCreationHome reviewPanel={projectId ? <M1Review key={projectId} projectId={projectId} assets={assets} seed={intakeSeed} /> : undefined} mode="oneclick" projectId={projectId} projectName={projectName} assets={assets} coverage={coverage} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : activeStep <= 4 ? !coverage ? <QuickCreationHome mode="professional" projectId={projectId} projectName={projectName} assets={assets} coverage={null} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts onOpenOneClick={() => navigate("oneclick")}><FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /></ConversationWorkbench> : <>
+        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeView === "oneclick" ? <QuickCreationHome intakeSeed={intakeSeed} onPrepareAssets={async items => { await persistUploads(items, projectId); const saved = await apiRequest<Asset[]>(`/projects/${projectId}/assets`); setAssets(saved); return saved; }} mode="oneclick" projectId={projectId} projectName={projectName} assets={assets} coverage={coverage} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : activeStep <= 4 ? !coverage ? <QuickCreationHome mode="professional" projectId={projectId} projectName={projectName} assets={assets} coverage={null} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts onOpenOneClick={() => navigate("oneclick")}><FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /></ConversationWorkbench> : <>
           <section className="workbench" aria-label={activeView === "professional" ? "专业门店资料采集工作台" : "五图创作工作台"}>
             <div className="workbenchTop"><div className="workflowBackSlot">{activeStep > 1 && <button className="workflowBackButton" type="button" aria-label="返回上一步" onClick={() => setActiveStep((activeStep - 1) as Step)}><Icon name="arrow" size={16} /><span>上一步</span></button>}</div><div className="workbenchLabel"><Icon name={activeStep === 1 ? "store" : activeStep === 4 ? "chat" : activeStep >= 5 ? "spark" : "upload"} size={18} /><span><b>{activeStep >= 5 ? "五图创作" : "门店视觉包"}</b><small>{projectName || "新建项目"}</small></span></div><StepTabs active={activeStep} maxStep={maxStep} onSelect={setActiveStep} /><div className="stepCounter">{activeStep >= 5 ? activeStep - 4 : activeStep} / {activeStep >= 5 ? 2 : 4}</div></div>
             {activeStepContent}

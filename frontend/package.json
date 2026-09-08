@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:confirmation": "node --experimental-strip-types --test tests/confirmation-flow.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
