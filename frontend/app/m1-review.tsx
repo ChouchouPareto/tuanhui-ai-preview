@@ -118,9 +118,10 @@ export function M1Review({ controller, projectId, seed, draft, prepare, onRestor
     {busy && <p role="status">正在整理本次需求…</p>}
     {snapshot && review?.status !== "CONFIRMED" && <>
       {!clean && <p className="inlineFeedbackHint" role="status">需求有修改，发送后更新确认内容。</p>}
-      {clean && snapshot.gaps.length > 0 && <div className="inlineMissing" role="alert" id="creation-missing">
-        {snapshot.gaps.filter(g => g.field !== "assets").length > 0 && <p>请补充：{snapshot.gaps.filter(g => g.field !== "assets").map(g => g.kind === "conflict" ? g.question : ({store_name:"店名",hero_item:"本次重点（菜品、套餐、卖点或特色）",hero_price:"真实价格"} as Record<string,string>)[g.field] || g.question).join("、")}。<button type="button" onClick={() => onReply()}>继续填写</button></p>}
-        {snapshot.gaps.some(g => g.field === "assets") && <p>请添加真实菜品图，门头不能用于成品。<button type="button" onClick={onAssets}>添加素材</button></p>}
+      {clean && snapshot.gaps.length > 0 && <div className="inlineMissing" role="status" aria-live="polite" id="creation-missing">
+        <span className="inlineTipLabel">小提示</span>
+        {snapshot.gaps.filter(g => g.field !== "assets").length > 0 && <p>{snapshot.gaps.filter(g => g.field !== "assets").map(g => g.kind === "conflict" ? g.question : ({store_name:"图片上想展示哪个店名？",hero_item:"这次想突出什么？菜品、套餐、卖点或特色都可以。",hero_price:"想在图片上展示的价格是多少？不展示也可以。"} as Record<string,string>)[g.field] || g.question).join(" ")}<button type="button" onClick={() => onReply()}>补充一句</button></p>}
+        {snapshot.gaps.some(g => g.field === "assets") && <p>还需要一张真实菜品图来制作画面，门头照片仅用于识别。<button type="button" onClick={onAssets}>上传菜品图</button></p>}
       </div>}
       {allowed && <div className="inlineReady">
         <p className="inlineReadySummary"><strong>本次生成</strong> 首页五连图 · {snapshot.show_store_name ? String(snapshot.facts.store_name) : "不展示店名"} · {String(snapshot.facts.hero_item || snapshot.facts.selling_points || snapshot.facts.positioning || "展示所选菜品")}{snapshot.show_price ? ` · ${snapshot.facts.hero_price}` : ""}</p>
