@@ -16,7 +16,22 @@
 .quickComposer .inlineFeedback { width: auto; max-width: none; margin: 0 24px 16px; padding: 0; background: transparent; border: 0; border-radius: 0; }
 .inlineMissing { color: var(--danger); font-size: 13px; line-height: 1.6; }.inlineMissing p { margin: 4px 0; }.inlineMissing button { color: inherit; min-height: 36px; padding: 4px 8px; border: 0; background: transparent; text-decoration: underline; text-underline-offset: 3px; }
 .inlineFeedbackHint { margin: 0; color: var(--muted); font-size: 13px; }.inlineReady { border-top: 1px solid var(--line); padding-top: 12px; }.inlineReadySummary { margin: 0 0 10px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }.inlineReadySummary strong { margin-right: 8px; font-weight: 500; }.inlineReadyActions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }.inlineReadyActions .inlineGenerate { min-height: 44px; font-size: 14px; padding: 10px 20px; }
-.promptGuidance { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }.promptGuidance button { min-height: 36px; border: 0; background: transparent; padding: 4px 8px; color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.quickToolbarEnd .understandingToggle { min-height: 44px; font-size: 13px; white-space: nowrap; color: var(--ink); }
+.understandingToggle small { font-size: 12px; color: var(--muted); }
+.understandingToggle > span { flex-shrink: 0; }
+.understandingToggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; border-radius: 6px; }
+.understandingToggle:disabled { opacity: .5; cursor: wait; }
+.understandingNote:not(.srOnly) { grid-column: 1 / -1; margin: 0; text-align: right; color: var(--muted); font-size: 12px; line-height: 1.5; }
+@media (max-width: 1400px) {
+  .quickComposerToolbar:has(.understandingToggle) { grid-template-columns: auto minmax(0, 1fr); }
+  .quickComposerToolbar:has(.understandingToggle) .quickToolbarMenus { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; overflow-x: auto; }
+  .quickComposerToolbar:has(.understandingToggle) .quickToolbarEnd { justify-self: end; }
+}
+@media (max-width: 480px) {
+  .quickComposerToolbar:has(.understandingToggle) { column-gap: 8px; padding-inline: 10px; }
+  .quickToolbarEnd:has(.understandingToggle) { gap: 8px; }
+  .understandingToggle small { display: none; }
+}
 @media (max-width: 640px) { .quickComposer .inlineFeedback { margin: 0 16px 16px; }.inlineReadyActions { align-items: stretch; flex-direction: column; } }
 .quickCreationHome:has(.inlineReview) .quickComposer { border-radius: 28px; }
 .quickComposer .conversationReview { position: relative; width: min(420px, calc(100% - 32px)); max-width: none; margin: 0 16px 12px auto; padding: 0; background: transparent; border: 0; border-radius: 0; }
