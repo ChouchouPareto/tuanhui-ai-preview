@@ -13,7 +13,27 @@
 .quickPrompt:has(.intakeReplyLabel) { display: flex; flex-direction: column; }
 .intakeAiOption { font-size: 12px; color: var(--muted); margin-top: 8px; }.intakeAiOption summary { cursor: pointer; padding: 8px 0; }.intakeAiOption label { display: flex; align-items: center; gap: 8px; min-height: 44px; }.intakeAiOption small { display: block; }
 .inlineReview { max-width: 1280px; margin: -1px auto 24px; padding: 20px 28px; background: var(--surface); border-radius: 0 0 24px 24px; color: var(--ink); font-size: 14px; border-top: 1px solid var(--line); }
-.quickCreationHome:has(.inlineReview) .quickComposer { border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: none; }
+.quickCreationHome:has(.inlineReview) .quickComposer { border-radius: 28px; }
+.quickComposer .conversationReview { position: relative; width: min(420px, calc(100% - 32px)); max-width: none; margin: 0 16px 12px auto; padding: 0; background: transparent; border: 0; border-radius: 0; }
+.conversationReview .reviewTrigger { display: flex; align-items: center; gap: 10px; min-height: 44px; width: 100%; padding: 8px 4px; border: 0; background: transparent; color: var(--muted); text-align: left; font-size: 13px; }
+.reviewTrigger > span:nth-child(2) { flex: 1; }.reviewDot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
+.reviewPopover { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 40; width: 100%; max-height: min(520px, 60dvh); overflow-y: auto; overscroll-behavior: contain; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 12px 36px rgba(0,0,0,.12); animation: review-appear .16s ease-out; }
+.reviewHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }.reviewHeader small { font-size: 12px; }.reviewHeader h2 { margin: 4px 0 0; font-size: 18px; line-height: 1.4; font-weight: 600; }
+.conversationReview .reviewHeader h2:focus { outline: none; }
+.conversationReview .reviewClose { width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 24px; }
+.conversationReview .intakeSummary { display: grid; gap: 8px; margin: 16px 0; font-size: 14px; line-height: 1.6; }.conversationReview .intakeSummary dt { width: 36px; }
+.conversationReview .intakeQuestions { margin: 12px 0; }.conversationReview .intakeQuestions p { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+.conversationReview .intakeQuestions button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 10px 0; margin: 0; text-align: left; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; font-size: 14px; color: var(--ink); }
+.conversationReview .intakeQuestions button:last-child { border-bottom: 0; }.conversationReview .intakeQuestions button:hover { color: var(--purple); }.reviewQuestionText { display: grid; gap: 3px; }.reviewQuestionText small { font-size: 12px; font-weight: 400; }.reviewQuestionText b { font-weight: 500; }
+.reviewLinks { display: flex; gap: 16px; }.conversationReview .reviewLinks button { min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: var(--muted); font-size: 13px; }
+.conversationReview .inlineReviewFooter { display: grid; gap: 12px; padding-top: 12px; }.conversationReview .inlineGenerate { width: 100%; border-radius: 12px; min-height: 44px; padding: 10px 16px; font-size: 14px; }
+.quickComposer .inlineConsent, .quickComposer .intakeAiOption label { display: flex; align-items: flex-start; justify-content: flex-start; gap: 8px; font-size: 13px; line-height: 1.6; cursor: pointer; }
+.quickComposer .inlineConsent input[type=checkbox], .quickComposer .intakeAiOption input[type=checkbox] { appearance: auto; display: inline-block; width: 16px; min-width: 16px; max-width: 16px; height: 16px; min-height: 16px; flex: 0 0 16px; padding: 0; margin: 3px 0 0; accent-color: var(--purple); }
+.quickComposer .intakeAiOption { font-size: 12px; }.quickComposer .intakeAiOption summary { min-height: 36px; padding: 8px 0; }.quickComposer .intakeAiOption small { font-size: 12px; line-height: 1.5; }
+.conversationReview .reviewFootnote { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }.quickComposer .intakeAiOption :focus-visible, .quickComposer textarea:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; border-radius: 8px; }
+@keyframes review-appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .reviewPopover { animation: none; } }
+@media (max-width: 640px) { .quickComposer .conversationReview { width: calc(100% - 24px); margin: 0 12px 12px; }.reviewPopover { padding: 16px; }.reviewHeader h2 { font-size: 16px; } }
 .inlineReviewHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .inlineReviewHeading strong { font-size: 16px; }.inlineReviewHeading span, .inlineReview small { color: var(--muted); }
 .inlineReviewBody { margin: 0; padding: 0; border: 0; min-width: 0; }

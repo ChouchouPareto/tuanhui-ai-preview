@@ -12,8 +12,8 @@ from sqlalchemy import select
 from app.models import Creation, FactVersion, IntakeRevision, SourceAsset
 
 
-LABELS = {"store_name": "店名", "hero_item": "主推菜品", "positioning": "门店特色", "selling_points": "真实卖点", "hero_price": "价格"}
-ALIASES = {"store_name": "店名|门店名称|门店|店铺名称", "hero_item": "主推菜品或套餐|主推菜品|主推套餐|主推内容|招牌菜|主推|菜名|菜品", "positioning": "门店特色|门店定位|定位", "selling_points": "特色与卖点|真实卖点|核心卖点|卖点", "hero_price": "真实价格|套餐价格|价格|售价"}
+LABELS = {"store_name": "店名", "hero_item": "本次重点", "positioning": "门店特色", "selling_points": "真实卖点", "hero_price": "价格"}
+ALIASES = {"store_name": "店名|门店名称|门店|店铺名称", "hero_item": "本次重点|主推菜品或套餐|主推菜品|主推套餐|主推内容|招牌菜|主推|菜名|菜品", "positioning": "门店特色|门店定位|特色|定位", "selling_points": "特色与卖点|主推荐卖点|主推卖点|真实卖点|核心卖点|卖点", "hero_price": "真实价格|套餐价格|价格|售价"}
 
 
 class CreateInput(BaseModel):
@@ -101,7 +101,7 @@ def parse_text(text):
 
 
 def evaluate(facts, manifest, show_price=False, show_store_name=True):
-    fields = ["hero_item"]
+    fields = [] if any(str(facts.get(key) or "").strip() for key in ("hero_item", "selling_points", "positioning")) else ["hero_item"]
     if show_store_name:
         fields.insert(0, "store_name")
     if show_price:
@@ -174,7 +174,7 @@ def compile_intake(db, creation, payload):
     if not show_price:
         facts["hero_price"] = ""
     gaps = evaluate(facts, manifest, bool(show_price), show_store)
-    for key in ("store_name", "hero_item", "hero_price"):
+    for key in ("store_name", "hero_item", "selling_points", "positioning", "hero_price"):
         if (key == "store_name" and not show_store) or (key == "hero_price" and not show_price):
             continue
         if re.search(r"或者|还是|不确定|待定|或", str(facts.get(key, ""))):

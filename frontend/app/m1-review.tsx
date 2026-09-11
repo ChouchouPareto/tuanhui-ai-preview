@@ -18,6 +18,19 @@ export function M1Review({ controller, projectId, seed, draft, prepare, onRestor
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [acceptedKey, setAcceptedKey] = useState("");
+  const [expanded, setExpanded] = useState(true);
+  const panelRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    const outside = (event: PointerEvent) => { if (!panelRef.current?.contains(event.target as Node)) setExpanded(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setExpanded(false); triggerRef.current?.focus(); } };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [expanded]);
+  useEffect(() => { if (expanded && review && !busy) headingRef.current?.focus(); }, [expanded, review, busy]);
   const callbacks = useRef({ onRestore, onBusy, prepare });
   useEffect(() => { callbacks.current = { onRestore, onBusy, prepare }; }, [onRestore, onBusy, prepare]);
   const sending = useRef(false);
@@ -27,7 +40,7 @@ export function M1Review({ controller, projectId, seed, draft, prepare, onRestor
   const errorRef = useRef<HTMLDivElement>(null);
   const base = `/projects/${projectId}/creations`;
   function apply(next: Review, restore = false) {
-    reviewRef.current = next; setReview(next); setAcceptedKey("");
+    reviewRef.current = next; setReview(next); setAcceptedKey(""); setExpanded(true);
     if (restore && next.snapshot) callbacks.current.onRestore(next.snapshot);
   }
   function report(e: unknown) { setError(e instanceof Error ? e.message : "未能保存，请重试"); setTimeout(() => errorRef.current?.focus(), 0); }
@@ -113,21 +126,24 @@ export function M1Review({ controller, projectId, seed, draft, prepare, onRestor
     catch (e) { report(e); } finally { setBusy(false); }
   }
   if (!review && !seed && !error) return null;
-  return <section id="inline-confirmation" tabIndex={-1} className="inlineReview" aria-label="本次生成摘要" aria-busy={busy}>
+  return <section ref={panelRef} id="inline-confirmation" tabIndex={-1} className="inlineReview conversationReview" aria-label="本次生成摘要" aria-busy={busy}>
     {error && <div role="alert" tabIndex={-1} ref={errorRef} className="inlineReviewError">{error}<button type="button" disabled={busy} onClick={() => onReply()}>查看原始需求</button></div>}
     {busy && <p role="status">正在整理本次需求…</p>}
     {snapshot && review?.status !== "CONFIRMED" && <>
-      <div className="inlineReviewHeading"><strong>首页五连图</strong><span role="status">{!clean ? "需求已修改，发送后更新摘要" : snapshot.ready ? "已整理，请核对后生成" : "还有信息需要明确"}</span></div>
-      <dl className="intakeSummary" aria-label="已理解的信息">
+      <button ref={triggerRef} type="button" className="reviewTrigger" aria-expanded={expanded} aria-controls="review-dialog" onClick={() => setExpanded(value => !value)}><span className="reviewDot" aria-hidden="true" /><span>{!clean ? "需求有更新 · 发送后核对" : snapshot.ready ? "已整理 · 核对后生成" : "还需补充一点信息"}</span><span aria-hidden="true">{expanded ? "−" : "＋"}</span></button>
+      {expanded && <div id="review-dialog" role="dialog" aria-modal="false" aria-labelledby="review-title" className="reviewPopover">
+      <header className="reviewHeader"><div><h2 id="review-title" ref={headingRef} tabIndex={-1}>{!clean ? "需求已修改" : snapshot.ready ? "确认本次创作" : "补充后即可继续"}</h2></div><button type="button" className="reviewClose" aria-label="收起确认窗口" onClick={() => { setExpanded(false); triggerRef.current?.focus(); }}>×</button></header>
+      {clean && snapshot.ready && <dl className="intakeSummary" aria-label="已理解的信息">
         {snapshot.show_store_name && snapshot.facts.store_name && <div><dt>店名</dt><dd>{snapshot.facts.store_name}</dd></div>}
-        {snapshot.facts.hero_item && <div><dt>主推</dt><dd>{snapshot.facts.hero_item}</dd></div>}
+        {(snapshot.facts.hero_item || snapshot.facts.selling_points || snapshot.facts.positioning) && <div><dt>重点</dt><dd>{String(snapshot.facts.hero_item || snapshot.facts.selling_points || snapshot.facts.positioning)}</dd></div>}
         <div><dt>价格</dt><dd>{snapshot.show_price ? snapshot.facts.hero_price || "待明确" : "不展示"}</dd></div>
-        {snapshot.facts.selling_points && <div><dt>卖点</dt><dd>{String(snapshot.facts.selling_points)}</dd></div>}
-      </dl>
-      {clean && !!snapshot.gaps.length && <div className="intakeQuestions"><p>我还没确定以下内容，直接在上方补充即可：</p>{snapshot.gaps.map(g => <button key={g.field} type="button" disabled={busy} onClick={() => g.field === "assets" ? onAssets() : onReply(g.field)}>{g.field === "assets" ? "添加真实菜品图" : g.kind === "conflict" ? g.question : ({store_name:"店名是什么？",hero_item:"这次主推哪道菜或套餐？",hero_price:"展示的价格是多少？"} as Record<string,string>)[g.field] || g.question}</button>)}</div>}
-      <div className="inlineChips"><button type="button" disabled={busy} onClick={() => onReply()}>回到原文修改</button><button type="button" disabled={busy} onClick={onAssets}>查看素材</button></div>
-      <div className="inlineReviewFooter"><div><small>一张长图＋五张切片 · 仅用于本次创作</small>{allowed && <label className="inlineConsent"><input type="checkbox" disabled={busy} checked={acceptedKey === authorization} onChange={e => setAcceptedKey(e.target.checked ? authorization : "")} />确认摘要及素材使用权，同意本次模型费用</label>}</div><button type="button" className="inlineGenerate" disabled={busy || !allowed || acceptedKey !== authorization} onClick={confirm}>确认并生成五图</button></div>
-      <details className="inlineDisclosure"><summary>处理与费用说明</summary><p>当前支持明确文字表达和原框补充，不会猜测未确定的事实。门头只用于识别；按所选模型生图计费，不自动切换模型。</p></details>
+      </dl>}
+      {!clean && <p className="reviewFootnote">请发送最新需求，再核对生成内容。</p>}
+      {clean && !!snapshot.gaps.length && <div className="intakeQuestions"><p>点击一项，回到对话栏补充。</p>{snapshot.gaps.map(g => <button key={g.field} type="button" disabled={busy} onClick={() => { setExpanded(false); if (g.field === "assets") onAssets(); else onReply(g.field); }}><span className="reviewQuestionText"><b>{g.kind === "conflict" ? g.question : ({assets:"参考图片",store_name:"门店名称",hero_item:"本次重点",hero_price:"展示价格"} as Record<string,string>)[g.field] || g.question}</b>{g.kind !== "conflict" && g.field === "hero_item" && <small>菜品、套餐、卖点或特色，任选一种</small>}{g.field === "assets" && <small>添加一张真实菜品图</small>}</span><span aria-hidden="true">→</span></button>)}</div>}
+      {(!clean || snapshot.ready) && <div className="reviewLinks"><button type="button" disabled={busy} onClick={() => { setExpanded(false); onReply(); }}>修改需求</button>{clean && <button type="button" disabled={busy} onClick={() => { setExpanded(false); onAssets(); }}>查看素材 · {snapshot.assets.length}</button>}</div>}
+      {allowed && <div className="inlineReviewFooter"><label className="inlineConsent"><input type="checkbox" disabled={busy} checked={acceptedKey === authorization} onChange={e => setAcceptedKey(e.target.checked ? authorization : "")} /><span>确认内容和素材授权，同意本次生图费用</span></label><button type="button" className="inlineGenerate" disabled={busy || acceptedKey !== authorization} onClick={confirm}>确认生成</button></div>}
+      {clean && snapshot.ready && <p className="reviewFootnote">长图＋五张切片 · 门头不入画</p>}
+      </div>}
     </>}
     {task && ["PENDING","RUNNING"].includes(task.status) && <button type="button" onClick={pause} disabled={busy}>暂停后续处理（已发送请求可能仍计费）</button>}
     {review?.status === "CONFIRMED" && <div role="status"><p>{task?.error?.message || (task?.status === "SUCCEEDED" ? "作品已生成，可以下载。" : task?.status === "RUNNING" ? "正在生成，离开页面不会取消任务。" : "任务已保存，等待后台执行。")}</p>{task?.result.long_image && <a href={apiUrl(`/projects/${projectId}/generations/${task.id}/assets/${task.result.long_image}`)} download><Image width={4000} height={600} unoptimized className="m1Result" src={apiUrl(`/projects/${projectId}/generations/${task.id}/assets/${task.result.long_image}`)} alt="完整五连图，点击下载" /></a>}{task?.result.slices && <div className="m1Options">{task.result.slices.map((file, i) => <a key={file} href={apiUrl(`/projects/${projectId}/generations/${task.id}/assets/${file}`)} download>下载第{i + 1}张</a>)}</div>}<a className="primaryButton" href={`/?project=${projectId}&compose=1`}>继续下一次创作</a></div>}

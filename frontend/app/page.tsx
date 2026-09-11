@@ -416,7 +416,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           {dishGroup}
           <button type="button" className="quickAssetExpand" aria-label="展开参考素材" data-tooltip="展开参考素材" onClick={() => setAssetDialog("all")}><Icon name="arrow" size={14} /></button>
         </div>
-        <div className="quickPrompt"><label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"主推菜品",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "例如：我的店叫山城酸菜鱼，主推酸菜鱼双人餐，99元，不展示价格。也可以在这里直接修改需求。"} onChange={(event) => setBrief(event.target.value)} />{mode === "oneclick" && <details className="intakeAiOption"><summary>复杂描述的理解选项</summary><label><input type="checkbox" checked={useAi} onChange={e => setUseAi(e.target.checked)} />智能理解本次文字（同意本次模型费用）</label><small>只发送本次文字，不上传图片；发送后最多调用一次，失败不自动重试。</small></details>}</div>
+        <div className="quickPrompt"><label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"本次重点",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "写下店名，以及想突出的菜品、套餐、卖点或特色。"} onChange={(event) => setBrief(event.target.value)} />{mode === "oneclick" && <details className="intakeAiOption"><summary>智能理解</summary><label><input type="checkbox" checked={useAi} onChange={e => setUseAi(e.target.checked)} />启用文字理解 · 按次计费</label><small>需同意本次理解费用；仅发送文字，失败不自动重试。</small></details>}</div>
       </div>
       <div className="quickComposerToolbar" ref={toolbarRef}>
         <div className="quickToolbarStart">
@@ -435,10 +435,6 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         <div className="quickToolbarEnd"><button className={`canvasToggle ${canvasMode ? "active" : ""}`} type="button" aria-pressed={canvasMode} onClick={() => setCanvasMode((value) => !value)}><span aria-hidden="true" />画布</button><button className="quickSubmit" type="submit" disabled={busy} aria-label={busy ? "正在整理资料" : "提交创作需求"}>{busy ? <span>整理中</span> : <Icon name="arrow" size={20} />}</button></div>
       </div>
       {(error || messageTone === "error") && <p className="quickComposerError" role="alert"><Icon name="close" size={15} />{error || message}</p>}
-    </form>
-    {!(mode === "oneclick" && projectId) && <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>}
-    {mode === "oneclick" && coverage && !generationTask && designPlan?.status !== "CONFIRMED" && <QuickFactConfirmation key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={onSubmitFacts} onConfirmAndGenerate={() => onConfirmAndGenerate(style, model)} />}
-    {mode === "oneclick" && (designPlan?.status === "CONFIRMED" || generationTask) && <div className="quickGenerationPanel"><GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={onGenerateExisting} onPause={onPause} /></div>}
     {mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
       controller={intakeController}
       draft={{ text: brief, assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
@@ -464,6 +460,10 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string, string>)[style] ?? "appetite",
           provider: model.includes("豆包") ? "doubao" : "qwen" };
       }} />}
+    </form>
+    {!(mode === "oneclick" && projectId) && <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>}
+    {mode === "oneclick" && coverage && !generationTask && designPlan?.status !== "CONFIRMED" && <QuickFactConfirmation key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={onSubmitFacts} onConfirmAndGenerate={() => onConfirmAndGenerate(style, model)} />}
+    {mode === "oneclick" && (designPlan?.status === "CONFIRMED" || generationTask) && <div className="quickGenerationPanel"><GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={onGenerateExisting} onPause={onPause} /></div>}
     {!(mode === "oneclick" && projectId) && !coverage && !generationTask && <CreationDiscovery />}
     <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "store")} /><input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "dish")} />
     {assetDialog && <div className="referenceWorkspaceBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAssetDialog(null); }}>
