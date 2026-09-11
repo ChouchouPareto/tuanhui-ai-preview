@@ -73,7 +73,7 @@ def test_conditional_questions_and_asset_scope(client):
     _, other, _ = setup_creation(client)
     assert submit(client, base, other).status_code == 404
     review = submit(client, base, asset, text="做五图", show_store_name=False, show_price=True).json()
-    assert {g["field"] for g in review["snapshot"]["gaps"]} == {"hero_item", "hero_price"}
+    assert {g["field"] for g in review["snapshot"]["gaps"]} == {"hero_price"}
     review = submit(client, base, asset, expected_revision=1, text="做五图", show_store_name=False, show_price=False, answers={"hero_item": "清蒸鱼"}).json()
     assert review["snapshot"]["ready"]
     assert confirm(client, base, review, materials_confirmed=False).status_code == 409

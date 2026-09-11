@@ -123,7 +123,7 @@ export function M1Review({ controller, projectId, seed, draft, prepare, onRestor
         {snapshot.gaps.some(g => g.field === "assets") && <p>请添加真实菜品图，门头不能用于成品。<button type="button" onClick={onAssets}>添加素材</button></p>}
       </div>}
       {allowed && <div className="inlineReady">
-        <p className="inlineReadySummary"><strong>本次生成</strong> 首页五连图 · {snapshot.show_store_name ? String(snapshot.facts.store_name) : "不展示店名"} · {String(snapshot.facts.hero_item || snapshot.facts.selling_points || snapshot.facts.positioning)}{snapshot.show_price ? ` · ${snapshot.facts.hero_price}` : ""}</p>
+        <p className="inlineReadySummary"><strong>本次生成</strong> 首页五连图 · {snapshot.show_store_name ? String(snapshot.facts.store_name) : "不展示店名"} · {String(snapshot.facts.hero_item || snapshot.facts.selling_points || snapshot.facts.positioning || "展示所选菜品")}{snapshot.show_price ? ` · ${snapshot.facts.hero_price}` : ""}</p>
         <div className="inlineReadyActions"><label className="inlineConsent"><input type="checkbox" disabled={busy} checked={acceptedKey === authorization} onChange={e => setAcceptedKey(e.target.checked ? authorization : "")} /><span>确认内容与素材授权，同意本次生图费用</span></label><button type="button" className="inlineGenerate" disabled={busy || acceptedKey !== authorization} onClick={confirm}>确认生成</button></div>
       </div>}
     </>}

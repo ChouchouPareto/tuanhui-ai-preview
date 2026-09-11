@@ -28,7 +28,7 @@ class IntakeInput(BaseModel):
     asset_ids: list[str] = Field(default_factory=list, max_length=20)
     answers: dict[str, str] = Field(default_factory=dict)
     show_price: bool = False
-    show_store_name: bool = True
+    show_store_name: bool | None = None
     style: Literal["appetite", "brand", "street", "minimal"] = "appetite"
     provider: Literal["qwen", "doubao"] = "qwen"
     use_ai: bool = False
@@ -85,6 +85,9 @@ def parse_text(text):
     # Conservative clause extraction: accept common explicit expressions, not guessed facts.
     for clause in re.split(r"[\n；;，,。！!]", text):
         clause = clause.strip()
+        focus = re.fullmatch(r"(?:这次|本次)?(?:想|希望)?(?:突出|主打|强调)\s*(.+)", clause)
+        if focus and not re.search(r"^(?:不|待定|不知道)", focus[1]):
+            values["selling_points"] = focus[1].strip()
         for key, labels in ALIASES.items():
             match = re.match(rf"^(?:我的|我们|这次|本次|请把|把)?\s*(?:{labels})\s*(?::|：|改为|改成|换成|叫做|叫|是|为|做)?\s*(.+)$", clause)
             if match:
@@ -100,8 +103,9 @@ def parse_text(text):
     return values
 
 
-def evaluate(facts, manifest, show_price=False, show_store_name=True):
-    fields = [] if any(str(facts.get(key) or "").strip() for key in ("hero_item", "selling_points", "positioning")) else ["hero_item"]
+def evaluate(facts, manifest, show_price=False, show_store_name=True, *, asset_led=False):
+    has_dish = any(a["usage"] == "renderable" for a in manifest)
+    fields = [] if (asset_led and has_dish) or any(str(facts.get(key) or "").strip() for key in ("hero_item", "selling_points", "positioning")) else ["hero_item"]
     if show_store_name:
         fields.insert(0, "store_name")
     if show_price:
@@ -109,7 +113,7 @@ def evaluate(facts, manifest, show_price=False, show_store_name=True):
     gaps = [{"field": key, "question": f"请填写{LABELS[key]}", "kind": "text"} for key in fields if not str(facts.get(key) or "").strip()]
     if show_price and facts.get("hero_price") and (not re.search(r"\d", str(facts["hero_price"])) or any(x in str(facts["hero_price"]) for x in ["未定", "待确认", "不知道"])):
         gaps.append({"field": "hero_price", "question": "请填写已确认的真实价格，或取消展示价格", "kind": "text"})
-    if not any(a["usage"] == "renderable" for a in manifest):
+    if not has_dish:
         gaps.append({"field": "assets", "question": "请在上方上传或选择至少一张真实菜品图；门头和菜单不能替代", "kind": "asset"})
     return gaps
 
@@ -159,21 +163,22 @@ def compile_intake(db, creation, payload):
     facts.update({key: value.strip() for key, value in payload.answers.items()})
     sources.update({key: "user_answer" for key in payload.answers})
     show_price = payload.show_price
-    show_store = payload.show_store_name
+    show_store = payload.show_store_name if payload.show_store_name is not None else (bool(facts.get("store_name")) if creation.mode == "oneclick" else True)
     if payload.input_mode != "merge":
         show_price = bool(extracted.get("hero_price")) if payload.input_mode == "replace" else bool(old and old.snapshot["show_price"])
-        show_store = True if payload.input_mode == "replace" else bool(old and old.snapshot["show_store_name"])
+        show_store = show_store if payload.input_mode == "replace" else bool(old and old.snapshot["show_store_name"])
         if extracted.get("hero_price"):
             show_price = True
-        for directive in re.finditer(r"(不展示|不显示|不标注|不写|不要显示|不要展示|展示|显示|标注)\s*(价格|店名)", payload.text):
+        for directive in re.finditer(r"(不展示|不显示|不标注|不写|不放|不要显示|不要展示|不要|展示|显示|标注|放上|写上)\s*(价格|店名)(?:\s*(?:和|与|、)\s*(价格|店名))?", payload.text):
             flag = not directive[1].startswith(("不", "不要"))
-            if directive[2] == "价格": show_price = flag
-            else: show_store = flag
+            for target in (directive[2], directive[3]):
+                if target == "价格": show_price = flag
+                elif target == "店名": show_store = flag
     else:
         show_price = show_price and (bool(payload.answers) or not re.search(r"不(?:展示|显示|标注|标|写)价格", payload.text))
     if not show_price:
         facts["hero_price"] = ""
-    gaps = evaluate(facts, manifest, bool(show_price), show_store)
+    gaps = evaluate(facts, manifest, bool(show_price), show_store, asset_led=creation.mode == "oneclick")
     for key in ("store_name", "hero_item", "selling_points", "positioning", "hero_price"):
         if (key == "store_name" and not show_store) or (key == "hero_price" and not show_price):
             continue

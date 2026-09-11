@@ -379,7 +379,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
     event.preventDefault();
     if (mode === "oneclick" && intakeController.current) { await intakeController.current.revise(); return; }
     const name = detectedName();
-    if (!brief.trim()) { setError("请描述本次想制作的内容，缺少的信息也在这个输入框补充"); return; }
+    if (!brief.trim() && (mode === "professional" || (!savedDishCount && !dishItems.length && !storeItems.length))) { setError("上传素材，或说说你想做什么"); return; }
     if (mode === "professional" && !name) { setError("请在文字中写明“门店名称：×××”"); return; }
     if (mode === "professional" && !savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
     setError("");

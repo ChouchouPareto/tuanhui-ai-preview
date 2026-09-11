@@ -24,7 +24,7 @@ def test_replacing_text_does_not_keep_removed_old_fields(client):
     old = submit(client, base, asset, input_mode="replace").json()
     new = submit(client, base, asset, expected_revision=1, input_mode="replace", text="店名：新店").json()
     assert "hero_item" not in new["snapshot"]["facts"]
-    assert not new["snapshot"]["ready"]
+    assert new["snapshot"]["ready"]  # Selected dishes suffice; removed text is not resurrected.
     assert confirm(client, base, old).status_code == 409
 
 def test_reply_merges_into_original_text_and_preserves_other_facts(client):
