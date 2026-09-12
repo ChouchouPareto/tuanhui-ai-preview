@@ -316,7 +316,8 @@ button:disabled { cursor: not-allowed; opacity: .35; }
 .quickComposer { max-width: 1040px; margin: 0 auto; overflow: visible; border: 1px solid rgba(255,255,255,.96); border-radius: 28px; background: rgba(255,255,255,.82); box-shadow: 0 18px 50px rgba(0,0,0,.045); transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
 .quickComposer:focus-within { border-color: #d0d0d3; background: white; box-shadow: 0 20px 56px rgba(0,0,0,.06); }
 .quickComposerBody { min-height: 238px; display: grid; grid-template-columns: minmax(0,1fr); gap: 18px; padding: 14px 18px 8px 14px; }
-.quickComposerBody.hasReferences { grid-template-columns: minmax(280px,360px) minmax(0,1fr); }
+.quickComposerBody.hasReferences { grid-template-columns: minmax(280px,360px) minmax(0,1fr); align-items: start; }
+.quickComposerBody > .quickAssetRail { align-self: start; }
 .quickAssetRail { min-width: 0; position: relative; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; padding: 14px 14px 44px; border: 1px solid #ededee; border-radius: 24px; background: #f5f5f6; }
 .referenceCategory { min-width: 0; padding: 10px; border-radius: 18px; background: #eaeaeb; }
 .referenceCategory > header { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
