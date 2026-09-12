@@ -19,6 +19,7 @@ ALIASES = {"store_name": "店名|门店名称|门店|店铺名称", "hero_item":
 class CreateInput(BaseModel):
     mode: Literal["oneclick", "pro"] = "oneclick"
     output_type: Literal["five_panel"] = "five_panel"
+    parent_creation_id: str | None = Field(default=None, max_length=36)
 
 
 class IntakeInput(BaseModel):
@@ -250,7 +251,7 @@ def compile_intake(db, creation, payload):
     if chat:
         messages.append({"role": "user", "content": message or "使用这些素材做五图"})
         messages.append({"role": "assistant", "content": conversation_reply(gaps, facts)})
-    return {"schema_version": 2, "text": text, "messages": messages, "render_mode": "illustration" if illustration else "real_assets", "facts": facts, "sources": sources,
+    return {"schema_version": 2, "parent_creation_id": old.snapshot.get("parent_creation_id") if old else None, "text": text, "messages": messages, "render_mode": "illustration" if illustration else "real_assets", "facts": facts, "sources": sources,
             "design_references": {"brand_color": memory.facts.get("brand_color"), "source": "confirmed_project_facts", "fact_version": memory.version} if memory and memory.facts.get("brand_color") else {},
             "assets": manifest, "show_price": bool(show_price), "show_store_name": show_store,
             "style": design_style, "provider": payload.provider, "gaps": gaps,

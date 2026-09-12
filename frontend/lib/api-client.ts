@@ -29,7 +29,8 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   const body = await readBody(response);
   if (!response.ok) {
     const error = new Error(getErrorMessage(body)) as AppError;
-    error.code = `HTTP_${response.status}`;
+    const detail = body && typeof body === "object" ? (body as { detail?: { code?: string }; error?: { code?: string } }) : null;
+    error.code = detail?.detail?.code || detail?.error?.code || `HTTP_${response.status}`;
     error.retryable = response.status >= 500 || response.status === 429;
     error.requestId = response.headers.get("x-request-id") ?? undefined;
     throw error;

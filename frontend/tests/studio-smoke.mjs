@@ -11,7 +11,8 @@ await page.route("**/api/v1/**", async route=>{
  calls++;
  const url=new URL(route.request().url()), p=url.pathname, method=route.request().method();
  let body={};
- if(p.endsWith("/projects")&&method==="POST")body={project_id:"smoke-project"};
+ if(p.endsWith("/activity"))body={server_time:new Date().toISOString(),current:{task_id:"smoke-task",stage:"image_model",state:"running",started_at:new Date(Date.now()-45000).toISOString(),duration_ms:null,estimate:{sample_count:0,range_ms:null}},spans:[]};
+ else if(p.endsWith("/projects")&&method==="POST")body={project_id:"smoke-project"};
  else if(p.endsWith("/assets"))body=[];
  else if(p.endsWith("/creations")&&method==="POST")body={creation_id:"smoke-creation",revision:0,status:"DRAFT",snapshot:null,snapshot_hash:""};
  else if(p.endsWith("/intake-runs")||p.endsWith("/review"))body=review;
@@ -90,6 +91,7 @@ try{
  await page.getByRole("dialog").waitFor();assert.equal(calls,0);
  await page.getByRole("button",{name:"同意并开始",exact:true}).click();
  await page.getByRole("heading",{name:"正在生成整张长图"}).waitFor();
+ await page.getByText(/生成画面 · 已用 4\d 秒/).waitFor();
  assert.equal(confirms,1);
  for (const link of await page.locator("a:visible").all()) {
    assert.equal(await link.evaluate(el=>getComputedStyle(el).textDecorationLine),"none");

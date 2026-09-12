@@ -182,3 +182,25 @@ class ModelCallRecord(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class IntakeRunLock(Base):
+    """One in-flight understanding per creation, independent of message identity."""
+    __tablename__ = "intake_run_locks"
+    creation_id: Mapped[str] = mapped_column(ForeignKey("creations.id"), primary_key=True)
+    task_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+
+class WorkflowEvent(Base):
+    """Append-only stage telemetry. Never stores raw prompts, photos or secrets."""
+    __tablename__ = "workflow_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), index=True)
+    creation_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    task_id: Mapped[str] = mapped_column(String(36), index=True)
+    stage: Mapped[str] = mapped_column(String(40))
+    state: Mapped[str] = mapped_column(String(20))
+    model: Mapped[str] = mapped_column(String(120), default="local")
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

@@ -17,6 +17,14 @@ from app.main import app
 
 
 @pytest.fixture(autouse=True)
+def offline_ocr(monkeypatch):
+    # Portable unit tests; native OCR is verified separately against a saved image.
+    from app.services import text_guard
+    monkeypatch.setattr(text_guard, "detector_binary", lambda: Path("/test-ocr"))
+    monkeypatch.setattr(text_guard, "detect_text", lambda path: [])
+
+
+@pytest.fixture(autouse=True)
 def clean_database():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)

@@ -34,18 +34,16 @@ def _reference_data(asset: SourceAsset) -> str:
 
 def build_visual_prompt(plan: dict) -> str:
     if plan.get("template_version") == "region-master-v3":
-        from app.services.copy_policy import COPY_PE
         from app.services.master_layout import PALETTES
         instructions = (Path(__file__).with_name("prompts") / "generation_v3.md").read_text(encoding="utf-8")
         # The template is trusted control data; store facts are untrusted task data.
         instructions += "\n画布比例：" + plan["canvas"]["ratio"]
         instructions += "\n已选择构图（必须遵守）：" + json.dumps(plan["layout"], ensure_ascii=False)
-        instructions += "\n文案约束：" + COPY_PE.read_text(encoding="utf-8")
         instructions += "\n任务资料：" + json.dumps({
-            "facts": plan["locked_facts"], "copy": plan["copy"], "style": plan["style"],
+            "style": plan["style"],
             "text_color": PALETTES.get(plan["style"]["key"], PALETTES["appetite"])[1],
             "creative_subject": plan["creative_direction"]["subject"],
-            "confirmed_brand_references": plan.get("brand_references", {}),
+            "confirmed_brand_color": plan.get("brand_references", {}).get("brand_color"),
         }, ensure_ascii=False)
         if plan.get("render_mode") != "illustration":
             instructions += "\n本次为真实照片排版：只生成统一背景和装饰，visual区域留给本地真实素材，不绘制食物、餐具或额外产品。"
@@ -139,6 +137,9 @@ def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()
     output_dir.mkdir(parents=True, exist_ok=True)
     with Image.open(io.BytesIO(image_bytes)) as source:
         source.convert("RGB").save(output_dir / "model-visual.png")
+        if plan.get("template_version") == "region-master-v3":
+            from app.services.text_guard import check_background
+            check_background(output_dir / "model-visual.png")
         canvas = compose_master(source, plan, assets, _font)
     save_manifest(output_dir, plan, assets)
     (output_dir / "generation-audit.json").write_text(json.dumps({
@@ -172,6 +173,31 @@ def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()
 
 
 def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan: DesignPlan, provider: str, allow_fallback: bool):
+    from app.services.telemetry import emit
+    from app.models import utc_now
+    from datetime import timezone
+    db.refresh(task)
+    if task.status == TaskStatus.NEEDS_USER:
+        return
+    creation_id = plan.plan.get("creation_id")
+    # Separate comparable workloads. This is a total pipeline cohort, not a model latency.
+    model = settings.qwen_image_model if provider == "qwen" else settings.doubao_image_model
+    cohort = ":".join((model, plan.plan.get("template_version", "legacy"), plan.plan.get("render_mode", "real_assets"), str(plan.plan.get("output_type", "five_panel"))))
+    queued_ms = max(1, int((utc_now().replace(tzinfo=timezone.utc) - task.created_at.replace(tzinfo=timezone.utc)).total_seconds()*1000))
+    emit(db, project.id, task.id, "queue", "completed", creation_id=creation_id, duration_ms=queued_ms)
+    started = time.monotonic()
+    emit(db, project.id, task.id, "generation", "started", creation_id=creation_id, model=cohort)
+    try:
+        _run_generation(db, project, task, plan, provider, allow_fallback)
+    finally:
+        db.refresh(task)
+        state = "completed" if task.status == TaskStatus.SUCCEEDED else "cancelled" if task.error_code == "PAUSED_BY_USER" else "failed"
+        emit(db, project.id, task.id, "generation", state, creation_id=creation_id, model=cohort,
+             duration_ms=max(1, int((time.monotonic()-started)*1000)), error_code=task.error_code)
+
+
+def _run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan: DesignPlan, provider: str, allow_fallback: bool):
+    from app.services.telemetry import emit
     db.refresh(task)
     if task.status == TaskStatus.NEEDS_USER:
         return
@@ -193,6 +219,9 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
     try:
         # Validate local assets and text before any paid model request.
         validate_design_plan(plan.plan)
+        if plan.plan.get("template_version") == "region-master-v3":
+            from app.services.text_guard import detector_binary
+            detector_binary()  # Fail before billing if the required local checker is absent.
         compose_master(Image.new("RGB", (4000, 600)), plan.plan, dishes, _font)
         prompt = build_visual_prompt(plan.plan)
     except (OSError, ValueError) as exc:
@@ -218,29 +247,42 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
         record = ModelCallRecord(project_id=project.id, task_id=task.id, provider=candidate, model=settings.qwen_image_model if candidate == "qwen" else settings.doubao_image_model, contract=plan.plan.get("template_version", "legacy"), status="RUNNING")
         db.add(record)
         db.commit()
+        stage = "image_model"
+        model_duration = None
+        phase_started = time.monotonic()
+        def phase_event(state, error_code=None):
+            emit(db, project.id, task.id, stage, state, creation_id=plan.plan.get("creation_id"), model=record.model,
+                 duration_ms=None if state == "started" else max(1, int((time.monotonic()-phase_started)*1000)), error_code=error_code)
+        phase_event("started")
         try:
             raw = call_qwen(prompt, references) if candidate == "qwen" else call_doubao(prompt, references)
+            model_duration = max(1, int((time.monotonic()-phase_started)*1000))
+            phase_event("completed")
             db.refresh(task)
             if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
-                record.status = "CANCELLED"
-                record.error_code = "PAUSED_BY_USER"
-                record.duration_ms = int((time.monotonic() - started) * 1000)
+                record.status = "SUCCEEDED" if model_duration is not None else "CANCELLED"
+                record.error_code = None if model_duration is not None else "PAUSED_BY_USER"
+                record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
                 project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
                 db.commit()
                 return
             task.progress = 76
             db.commit()
+            stage = "layout_export"
+            phase_started = time.monotonic()
+            phase_event("started")
             result = render_and_slice(raw, plan.plan, settings.generated_dir / project.id / task.id, dishes)
+            phase_event("completed")
             db.refresh(task)
             if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
-                record.status = "CANCELLED"
-                record.error_code = "PAUSED_BY_USER"
-                record.duration_ms = int((time.monotonic() - started) * 1000)
+                record.status = "SUCCEEDED" if model_duration is not None else "CANCELLED"
+                record.error_code = None if model_duration is not None else "PAUSED_BY_USER"
+                record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
                 project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
                 db.commit()
                 return
             record.status = "SUCCEEDED"
-            record.duration_ms = int((time.monotonic() - started) * 1000)
+            record.duration_ms = model_duration
             task.status = TaskStatus.SUCCEEDED
             task.progress = 100
             task.result = {**result, "provider": candidate, "model": record.model, "design_plan_id": plan.id}
@@ -248,18 +290,19 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
             db.commit()
             return
         except (ImageGenerationError, httpx.HTTPError, OSError, ValueError) as exc:
+            phase_event("failed", exc.code if isinstance(exc, ImageGenerationError) else "GENERATION_ERROR")
             db.refresh(task)
             if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
-                record.status = "CANCELLED"
-                record.error_code = "PAUSED_BY_USER"
-                record.duration_ms = int((time.monotonic() - started) * 1000)
+                record.status = "SUCCEEDED" if model_duration is not None else "CANCELLED"
+                record.error_code = None if model_duration is not None else "PAUSED_BY_USER"
+                record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
                 project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
                 db.commit()
                 return
             code = exc.code if isinstance(exc, ImageGenerationError) else "GENERATION_ERROR"
-            record.status = "FAILED"
-            record.error_code = code
-            record.duration_ms = int((time.monotonic() - started) * 1000)
+            record.status = "SUCCEEDED" if model_duration is not None else "FAILED"
+            record.error_code = None if model_duration is not None else code
+            record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
             errors.append(f"{candidate}:{exc}")
             db.commit()
     task.status = TaskStatus.FAILED_FINAL

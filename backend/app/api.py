@@ -227,6 +227,16 @@ def get_task(task_id: str, db: Session = Depends(get_db)):
     return {"id": task.id, "project_id": task.project_id, "creation_id": db.scalar(select(CreationConfirmation.creation_id).where(CreationConfirmation.task_id == task.id)), "status": task.status, "progress": task.progress, "result": task.result, "error": {"code": task.error_code, "message": task.error_message} if task.error_code else None}
 
 
+@router.get("/projects/{project_id}/tasks/{task_id}/activity")
+def task_activity(project_id: str, task_id: str, db: Session = Depends(get_db)):
+    from app.services.telemetry import activity
+    require_project(db, project_id)
+    task = db.get(WorkflowTask, task_id)
+    if not task or task.project_id != project_id:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return activity(db, project_id, task_id=task_id)
+
+
 @router.get("/projects/{project_id}/coverage")
 def get_coverage(project_id: str, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
@@ -389,6 +399,7 @@ def pause_generation(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="图片已经生成完成，无需暂停")
     if task.status == TaskStatus.FAILED_FINAL:
         raise HTTPException(status_code=409, detail="任务已经失败，可直接重新生成")
+    was_queued = task.status == TaskStatus.PENDING
     task.status = TaskStatus.NEEDS_USER
     task.error_code = "PAUSED_BY_USER"
     task.error_message = "已暂停；继续生成会重新发起模型调用"
@@ -396,6 +407,11 @@ def pause_generation(task_id: str, db: Session = Depends(get_db)):
     if project:
         project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
     db.commit()
+    if was_queued:
+        from app.services.telemetry import emit
+        from datetime import timezone
+        elapsed = max(1, int((utc_now().replace(tzinfo=timezone.utc) - task.created_at.replace(tzinfo=timezone.utc)).total_seconds()*1000))
+        emit(db, task.project_id, task.id, "queue", "cancelled", duration_ms=elapsed, error_code="PAUSED_BY_USER")
     return {"id": task.id, "project_id": task.project_id, "status": task.status, "progress": task.progress, "result": task.result, "error": {"code": task.error_code, "message": task.error_message}}
 
 

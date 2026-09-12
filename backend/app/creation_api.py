@@ -19,10 +19,28 @@ router = APIRouter(prefix="/api/v1/projects/{project_id}/creations", tags=["M1 c
 def create(project_id: str, payload: CreateInput, db: Session = Depends(get_db)):
     if not db.get(StoreProject, project_id):
         fail("NOT_FOUND", "项目不存在", 404)
+    parent_snapshot = None
+    if payload.parent_creation_id:
+        parent = require_creation(db, project_id, payload.parent_creation_id)
+        if parent.status != "CONFIRMED":
+            fail("PARENT_NOT_CONFIRMED", "原作品还未确定，请先完成当前需求")
+        parent_revision = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == parent.id, IntakeRevision.revision == parent.revision))
+        if parent_revision:
+            parent_snapshot = {**parent_revision.snapshot, "parent_creation_id": parent.id}
     item = Creation(project_id=project_id, mode=payload.mode)
     db.add(item)
+    db.flush()
+    if parent_snapshot:
+        db.add(IntakeRevision(creation_id=item.id, revision=0, request_key="inherited-context", request_hash=digest(parent_snapshot), snapshot=parent_snapshot, snapshot_hash=digest(parent_snapshot)))
     db.commit()
     return review(db, item)
+
+
+@router.get("/{creation_id}/activity")
+def get_activity(project_id: str, creation_id: str, db: Session = Depends(get_db)):
+    from app.services.telemetry import activity
+    require_creation(db, project_id, creation_id)
+    return activity(db, project_id, creation_id=creation_id)
 
 
 @router.get("/{creation_id}/review")
@@ -32,6 +50,8 @@ def get_review(project_id: str, creation_id: str, db: Session = Depends(get_db))
     confirmation = db.scalar(select(CreationConfirmation).where(CreationConfirmation.creation_id == creation_id, CreationConfirmation.revision == creation.revision))
     result["task_id"] = confirmation.task_id if confirmation else None
     result["execution_state"] = confirmation.state if confirmation else None
+    parent_id = (result.get("snapshot") or {}).get("parent_creation_id")
+    result["previous_task_id"] = db.scalar(select(CreationConfirmation.task_id).where(CreationConfirmation.creation_id == parent_id)) if parent_id else None
     return result
 
 
@@ -107,6 +127,8 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
     record = CreationConfirmation(creation_id=creation_id, revision=creation.revision, request_key=idempotency_key,
                                   snapshot=snapshot, plan_id=plan.id, task_id=task.id)
     db.add(record)
+    from app.models import WorkflowEvent
+    db.add(WorkflowEvent(project_id=project_id, creation_id=creation_id, task_id=task.id, stage="queue", state="started"))
     try:
         db.commit()
     except IntegrityError:

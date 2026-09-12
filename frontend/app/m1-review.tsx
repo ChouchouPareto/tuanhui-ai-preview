@@ -2,13 +2,14 @@
 
 import { Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { GenerationGallery } from "./generation-gallery";
+import { WorkflowTiming } from "./workflow-timing";
 import { createPortal } from "react-dom";
 import { apiRequest, jsonRequest } from "../lib/api-client";
 import { canConfirmDraft, draftKey, DraftInput } from "../lib/intake-state";
 
 export type IntakeSeed = { text: string; assetIds: string[]; nonce: string };
 export type Snapshot = { render_mode?: string; messages?: { role: string; content: string }[]; schema_version?: number; text: string; facts: Record<string, string | string[]>; sources: Record<string, string>; assets: { id: string; name: string; usage: string }[]; show_price: boolean; show_store_name: boolean; style: string; provider: string; gaps: { field: string; question: string; kind: string }[]; ready: boolean; project_changes: string[] };
-type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; project_name?: string };
+type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; previous_task_id?: string; project_name?: string };
 type Task = { id: string; project_id?: string; creation_id?: string; status: string; progress: number; result: { long_image?: string; slices?: string[]; clean_long_image?: string; clean_slices?: string[] }; error?: { code: string; message: string } };
 export type IntakeController = { revise: () => Promise<void>; pause: () => Promise<void> };
 type Props = { autoGenerate?: () => boolean; onGenerationActive?: (active: boolean) => void; target: HTMLElement | null; controller: Ref<IntakeController>; projectId: string; seed: IntakeSeed | null; draft: DraftInput; prepare: () => Promise<DraftInput>; onRestore: (snapshot: Snapshot) => void; onReply: (field?: string) => void; onAssets: () => void; onBusy: (busy: boolean) => void };
@@ -16,6 +17,7 @@ type Props = { autoGenerate?: () => boolean; onGenerationActive?: (active: boole
 export function M1Review({ autoGenerate, onGenerationActive, target, controller, projectId, seed, draft, prepare, onRestore, onReply, onAssets, onBusy }: Props) {
   const [review, setReview] = useState<Review | null>(null);
   const [task, setTask] = useState<Task | null>(null);
+  const [previousTask, setPreviousTask] = useState<Task | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const callbacks = useRef({ onRestore, onBusy, prepare });
@@ -57,6 +59,10 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
       if (saved) {
         const next = await apiRequest<Review>(`${base}/${saved}/review`);
         if (!stopped) apply(next, true);
+        if (next.previous_task_id) {
+          const previous = await apiRequest<Task>(`/tasks/${next.previous_task_id}`);
+          if (!stopped && previous.status === "SUCCEEDED" && previous.project_id === projectId) setPreviousTask(previous);
+        }
       }
     })().catch(e => { if (!stopped) report(e); });
     return () => { stopped = true; };
@@ -71,8 +77,13 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
         const id = new URLSearchParams(window.location.search).get("creation");
         if (id) current = await apiRequest<Review>(`${base}/${id}/review`);
       }
-      if (!current || current.status === "CONFIRMED") current = await apiRequest<Review>(base, jsonRequest("POST", {}));
+      if (!current || current.status === "CONFIRMED") {
+        if (task?.status === "SUCCEEDED") setPreviousTask(task);
+        current = await apiRequest<Review>(base, jsonRequest("POST", current?.creation_id ? { parent_creation_id: current.creation_id } : {}));
+        setTask(null);
+      }
       reviewRef.current = current;
+      setReview(current);
       window.history.replaceState({}, "", `?project=${projectId}&creation=${current.creation_id}`);
       const input = initial ? { ...draft, text: initial.text, assetIds: initial.assetIds, chat: true, useAi: Boolean(initial.text.trim()) } : await callbacks.current.prepare();
       const body = JSON.stringify({ expected_revision: current.revision, text: input.text, asset_ids: input.assetIds, style: input.style, provider: input.provider,
@@ -140,8 +151,10 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
   if (!target || (!review && !seed && !error && !busy)) return null;
   return createPortal(<section id="inline-confirmation" tabIndex={-1} className="inlineReview inlineFeedback" aria-label="本次生成摘要" aria-busy={busy}>
     <div className="chatMessages" aria-label="创作对话">{(snapshot?.messages ?? (snapshot?.text ? [{role:"user", content:snapshot.text}] : [])).map((message, index) => <div key={index} className={`chatMessage ${message.role}`}><span className="srOnly">{message.role === "user" ? "你" : "团绘"}</span><p>{message.content}</p></div>)}</div>
-    {error && <div role="alert" tabIndex={-1} ref={errorRef} className="inlineReviewError">{error}<button type="button" disabled={busy} onClick={() => onReply()}>查看原始需求</button></div>}
+    {error && <div role="alert" tabIndex={-1} ref={errorRef} className="inlineReviewError">{error}<button type="button" disabled={busy} onClick={() => onReply()}>继续修改</button></div>}
     {busy && <p role="status">我在看你的需求…</p>}
+    <WorkflowTiming path={task ? `/projects/${projectId}/tasks/${task.id}/activity` : review?.creation_id ? `${base}/${review.creation_id}/activity` : null} active={busy || !!task && ["PENDING", "RUNNING"].includes(task.status)} />
+    {previousTask && task?.status !== "SUCCEEDED" && <details className="previousResult"><summary>查看上一版作品（已保留）</summary><GenerationGallery projectId={projectId} taskId={previousTask.id} longImage={previousTask.result.long_image} slices={previousTask.result.slices} cleanLongImage={previousTask.result.clean_long_image} cleanSlices={previousTask.result.clean_slices} /></details>}
     {snapshot && review?.status !== "CONFIRMED" && <>
       {!clean && <p className="inlineFeedbackHint" role="status"></p>}
       {clean && !snapshot.messages?.length && snapshot.gaps.length > 0 && <div className="inlineMissing" role="status" aria-live="polite" id="creation-missing">

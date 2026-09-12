@@ -22,6 +22,9 @@ body:has(.studioShell) { overflow: hidden; }
 .studioMessages { width: min(960px,100%); min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 20px 8px 28px; margin: 0 auto 16px; scrollbar-gutter: stable; }
 .studioMessages .inlineReview { border: 0; padding: 0; margin: 0; background: transparent; max-width: none; font-size: 16px; }
 .studioMessages .chatMessages { gap: 24px; }
+.studioMessages .workflowTiming { color: var(--muted); font-size: 13px; line-height: 1.6; font-variant-numeric: tabular-nums; margin: 8px 0 16px; }
+.previousResult { margin: 12px 0 20px; }
+.previousResult summary { cursor: pointer; min-height: 44px; display: list-item; padding: 10px 0; color: var(--muted); }
 .studioMessages .chatMessage { font-size: 16px; }
 .studioMessages .chatMessage.user { max-width: 82%; background: #eeeef1; padding: 16px 20px; }
 .studioMessages .chatMessage.assistant { padding: 6px 0 16px; }

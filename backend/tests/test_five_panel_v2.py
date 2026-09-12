@@ -33,7 +33,7 @@ def test_brand_only_has_registered_whole_canvas_layout():
     assert "面食" in prompt and "不要求每片有标题或主体" in prompt
     assert "仅提供了店名：制作抽象" not in prompt
     assert "左右各五分之一留白" not in prompt
-    assert "缺少价格时省略价格" in prompt
+    assert "山西面馆" not in prompt  # Business text belongs only to the typography layer.
 
 
 def test_hidden_brand_and_price_are_not_reintroduced():

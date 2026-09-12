@@ -13,6 +13,7 @@ SOURCES = [
     "backend/app/services/master_layout.py", "backend/app/services/intake_understanding.py",
     "backend/app/services/model_gateway.py", "backend/app/services/analysis.py", "backend/app/schemas.py",
     "backend/app/services/intake.py", "backend/app/creation_api.py",
+    "backend/app/services/text_guard.py", "backend/app/services/recognize_text.swift", "backend/app/services/telemetry.py",
 ]
 
 
