@@ -82,15 +82,15 @@ def _post_chat(model: str, messages: list[dict]) -> tuple[str, dict, int]:
 
 
 def recognize_image(path: str, mime_type: str, asset_type: str = "menu") -> tuple[OCRPayload, dict]:
-    prompt_name = "storefront_ocr.txt" if asset_type == "storefront" else "menu_ocr.txt"
-    model = settings.bailian_vision_model if asset_type == "storefront" else settings.bailian_ocr_model
+    prompt_name = "storefront_ocr.txt" if asset_type in {"storefront", "environment"} else "menu_ocr.txt"
+    model = settings.bailian_vision_model if asset_type in {"storefront", "environment"} else settings.bailian_ocr_model
     text, usage, duration_ms = _post_chat(
         model,
         [{
             "role": "user",
             "content": [
                 {"type": "image_url", "image_url": {"url": _image_data_url(path, mime_type)}},
-                {"type": "text", "text": load_prompt(prompt_name)},
+                {"type": "text", "text": load_prompt(prompt_name) + ("\n本图为店内环境：没有清晰招牌时不要推测店名，重点提取色彩、材质、风格与可见文字线索。" if asset_type == "environment" else "")},
             ],
         }],
     )

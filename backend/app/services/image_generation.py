@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+from hashlib import sha256
 import time
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import DesignPlan, ModelCallRecord, ProjectStatus, SourceAsset, StoreProject, TaskStatus, WorkflowTask, utc_now
-from app.services.master_layout import compose_master, eligible_dishes, save_manifest
+from app.services.master_layout import compose_master, eligible_dishes, save_manifest, add_export_watermark
 from app.services.design_plan import validate_design_plan
 
 
@@ -32,8 +33,26 @@ def _reference_data(asset: SourceAsset) -> str:
 
 
 def build_visual_prompt(plan: dict) -> str:
+    if plan.get("template_version") == "region-master-v3":
+        from app.services.copy_policy import COPY_PE
+        from app.services.master_layout import PALETTES
+        instructions = (Path(__file__).with_name("prompts") / "generation_v3.md").read_text(encoding="utf-8")
+        # The template is trusted control data; store facts are untrusted task data.
+        instructions += "\n画布比例：" + plan["canvas"]["ratio"]
+        instructions += "\n已选择构图（必须遵守）：" + json.dumps(plan["layout"], ensure_ascii=False)
+        instructions += "\n文案约束：" + COPY_PE.read_text(encoding="utf-8")
+        instructions += "\n任务资料：" + json.dumps({
+            "facts": plan["locked_facts"], "copy": plan["copy"], "style": plan["style"],
+            "text_color": PALETTES.get(plan["style"]["key"], PALETTES["appetite"])[1],
+            "creative_subject": plan["creative_direction"]["subject"],
+            "confirmed_brand_references": plan.get("brand_references", {}),
+        }, ensure_ascii=False)
+        if plan.get("render_mode") != "illustration":
+            instructions += "\n本次为真实照片排版：只生成统一背景和装饰，visual区域留给本地真实素材，不绘制食物、餐具或额外产品。"
+        else:
+            instructions += "\n本次为示意设计：按visual区域安排主题静物，不等分为五个或三个场景。"
+        return instructions
     if plan.get("render_mode") == "illustration":
-        import json
         from app.services.design_plan import creative_direction
         direction = plan.get("creative_direction") or creative_direction(plan["locked_facts"])
         return (
@@ -123,19 +142,33 @@ def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()
         canvas = compose_master(source, plan, assets, _font)
     save_manifest(output_dir, plan, assets)
     (output_dir / "generation-audit.json").write_text(json.dumps({
-        "contract": "five_panel_composition_v2", "prompt": build_visual_prompt(plan),
-        "quality_checks": {"five_nonempty_frames": True, "text_capacity": True,
+        "contract": plan.get("template_version"), "prompt": build_visual_prompt(plan),
+        "quality_checks": {"registered_layout": bool(plan.get("layout")), "text_capacity": True,
                            "semantic_visual_review": "not_automated"},
         "model_input_assets": [], "note": "Real photos composed locally; no semantic quality score claimed"
+        , "prompt_sha256": sha256(build_visual_prompt(plan).encode()).hexdigest(),
+        "layout_id": plan.get("layout", {}).get("id")
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+    clean = canvas.copy()
+    count = plan["canvas"]["slice_count"]
+    if plan.get("layout"):
+        clean.save(output_dir / "long-clean.png", format="PNG", optimize=True)
+        if plan.get("render_mode") == "illustration":
+            canvas = add_export_watermark(clean, count, _font)
     long_path = output_dir / "long.png"
     canvas.save(long_path, format="PNG", optimize=True)
     slices = []
-    for index in range(5):
+    clean_slices = []
+    for index in range(count):
         path = output_dir / f"{index + 1:02d}.png"
         canvas.crop((index * 800, 0, (index + 1) * 800, 600)).save(path, format="PNG", optimize=True)
         slices.append(path.name)
-    return {"long_image": long_path.name, "slices": slices, "width": 4000, "height": 600}
+        if plan.get("layout"):
+            name = f"{index + 1:02d}-clean.png"
+            clean.crop((index*800, 0, (index+1)*800, 600)).save(output_dir / name, format="PNG", optimize=True)
+            clean_slices.append(name)
+    return {"long_image": long_path.name, "slices": slices, "width": canvas.width, "height": canvas.height,
+            **({"clean_long_image": "long-clean.png", "clean_slices": clean_slices} if clean_slices else {})}
 
 
 def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan: DesignPlan, provider: str, allow_fallback: bool):
@@ -161,6 +194,7 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
         # Validate local assets and text before any paid model request.
         validate_design_plan(plan.plan)
         compose_master(Image.new("RGB", (4000, 600)), plan.plan, dishes, _font)
+        prompt = build_visual_prompt(plan.plan)
     except (OSError, ValueError) as exc:
         task.status = TaskStatus.FAILED_FINAL
         task.error_code = "MASTER_PREFLIGHT_FAILED"
@@ -170,7 +204,6 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
         return
     # No uploaded photos leave for background generation; compose real dishes locally.
     references = []
-    prompt = build_visual_prompt(plan.plan)
     providers = [provider]
     if allow_fallback:
         providers.append("doubao" if provider == "qwen" else "qwen")
@@ -182,7 +215,7 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
             db.commit()
             return
         started = time.monotonic()
-        record = ModelCallRecord(project_id=project.id, task_id=task.id, provider=candidate, model=settings.qwen_image_model if candidate == "qwen" else settings.doubao_image_model, contract="five_panel_composition_v2", status="RUNNING")
+        record = ModelCallRecord(project_id=project.id, task_id=task.id, provider=candidate, model=settings.qwen_image_model if candidate == "qwen" else settings.doubao_image_model, contract=plan.plan.get("template_version", "legacy"), status="RUNNING")
         db.add(record)
         db.commit()
         try:

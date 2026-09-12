@@ -53,5 +53,20 @@ try {
  await page.locator('.projectMenu summary').first().click();
  for(const name of ['编辑','复制','隐藏','删除']) assert(await page.getByRole('button',{name,exact:true}).isVisible());
  await page.screenshot({path:'/tmp/tuanhui-project-menu.png'});
- console.log('PASS real saved result: task / creation / project / refresh / return-project / reopen; project menu');
+ // Only synthetic metadata for the new export controls; do not create a real task.
+ await page.route(`**/api/v1/tasks/${task.id}`,route=>route.fulfill({json:{
+   ...detail,result:{...detail.result,clean_long_image:'long-clean.png',clean_slices:detail.result.slices.map((_,i)=>`0${i+1}-clean.png`)}
+ }}));
+ await page.route('**/assets/*-clean.png',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a/2kAAAAASUVORK5CYII=','base64')}));
+ await page.goto(`http://127.0.0.1:3011/?project=${project.id}&task=${task.id}`);
+ await page.getByRole('button',{name:'无水印',exact:true}).click();
+ assert((await page.getByRole('link',{name:'下载完整五连图',exact:true}).getAttribute('href')).endsWith('/long-clean.png'));
+ assert.equal(await page.getByRole('button',{name:'无水印',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.setViewportSize({width:375,height:812});
+ if (await page.locator('.sidebar.isOpen .brandRow button').isVisible()) await page.locator('.sidebar.isOpen .brandRow button').click();
+ await page.getByRole('button',{name:'无水印',exact:true}).scrollIntoViewIfNeeded();
+ await page.screenshot({path:'/tmp/tuanhui-export-options-mobile.png'});
+ await page.getByRole('button',{name:'带水印',exact:true}).click();
+ assert((await page.getByRole('link',{name:'下载完整五连图',exact:true}).getAttribute('href')).endsWith('/long.png'));
+ console.log('PASS real saved result reentry; project menu; mocked watermark export controls');
 } finally {await browser.close();}

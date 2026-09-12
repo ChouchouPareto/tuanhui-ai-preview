@@ -9,6 +9,8 @@
 6. region用简短方位描述候选所在区域，例如“左侧门店”“右侧红色门头”“一层中央入口”；evidence必须引用图片中真实可见的关键文字。
 7. 只有画面中恰好存在一个高置信餐饮门店候选时，store_name才填写其完整名称。存在两家及以上候选、候选不清晰或无法判断时，store_name必须为null，needs_confirmation必须为true。每个候选都必须输出0到1之间的confidence。
 8. store_name和每个候选name必须能在visible_text中找到对应文字证据。候选使用中英文组合名时，组合中的中文和英文必须都出现在visible_text中。
+9. 模糊、遮挡、缺字不得补全。宣传语不能充当店名；单候选低于0.9也必须待核对。confidence只代表模型自报，不代表事实已经可靠。
+10. 另外提取visual_observations数组：kind为color/style/logo_hint，value为观察描述，region为图中位置，evidence为可见依据，confidence为0到1，status固定candidate。Logo只描述可见线索，不声称已提取透明Logo文件。门头照片只作资料，绝不入画。
 
 只返回一个合法JSON对象，不要Markdown代码围栏，不要解释。格式：
-{"visible_text":"按区域整理的原始可见文字","store_name":null,"store_name_candidates":[{"name":"完整门店名","aliases":["别名或外文名"],"region":"画面方位","evidence":"可见文字证据","confidence":0.0}],"needs_confirmation":true,"products":[]}
+{"visible_text":"按区域整理的原始可见文字","store_name":null,"store_name_candidates":[{"name":"完整门店名","aliases":["别名或外文名"],"region":"画面方位","evidence":"可见文字证据","confidence":0.0}],"needs_confirmation":true,"products":[],"visual_observations":[]}

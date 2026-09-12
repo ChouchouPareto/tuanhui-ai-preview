@@ -12,7 +12,7 @@ def test_focus_accepts_product_or_feature(client, focus):
     assert snapshot["ready"]
     plan = build_design_plan(snapshot["facts"])
     assert plan["copy"]["headline"] == focus.split("：")[1]
-    assert plan["frames"][1]["role"] == "本次重点"
+    assert plan["frames"][1]["role"] == "导出切片2"
 
 
 def test_feature_not_converted_to_dish_name(client):

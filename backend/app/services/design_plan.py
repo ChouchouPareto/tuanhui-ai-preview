@@ -16,50 +16,34 @@ def _text(value, fallback="待确认") -> str:
     return normalized or fallback
 
 
-def build_design_plan(facts: dict, style: str = "appetite") -> dict:
-    preset = STYLE_PRESETS.get(style, STYLE_PRESETS["appetite"])
-    store_name = _text(facts.get("store_name"), "") if facts.get("show_store_name", True) else ""
-    hero_item = _text(facts.get("hero_item"), "")
-    positioning = _text(facts.get("positioning"), "")
-    raw_points = facts.get("selling_points", [])
-    selling_points = [str(item).strip() for item in (raw_points if isinstance(raw_points, list) else [raw_points]) if str(item).strip()]
-    focus = hero_item or (selling_points[0] if selling_points else positioning)
-    hero_price = _text(facts.get("hero_price"), "") if facts.get("show_price", True) else ""
-    primary_point = selling_points[0] if selling_points else positioning
-    secondary_point = selling_points[1] if len(selling_points) > 1 else positioning
-    frames = [
-        {"index": 1, "role": "品牌主题", "headline": store_name, "support": positioning, "visual": "统一母版上的品牌文字；门头照片仅用于识别，禁止入画"},
-        {"index": 2, "role": "本次重点", "headline": focus, "support": primary_point if primary_point != focus else "", "visual": "用已提供素材呈现本次重点，不把卖点或特色当作菜名，不虚构菜品"},
-        {"index": 3, "role": "连续主视觉", "headline": primary_point, "support": secondary_point, "visual": "与左右相连的真实菜品素材区域，不生成独立场景"},
-        {"index": 4, "role": "素材展示", "headline": focus, "support": primary_point if primary_point != focus else "", "visual": "按实际素材数量延展主视觉，不添加未提供的菜品或饮料"},
-        {"index": 5, "role": "品牌收束", "headline": hero_price, "support": focus, "visual": "同一背景中的已确认文字信息，不生成店内环境"},
-    ]
-    # Creative copy is not a business fact: use invitations, never invented claims.
+def build_design_plan(facts: dict, style: str = "appetite", *, output_type="five_panel", asset_count=0) -> dict:
+    from app.services.layout_catalog import OUTPUT_SPECS, select_layout
+    from app.services.copy_policy import validate_copy
+    spec = deepcopy(OUTPUT_SPECS.get(output_type, {}))
+    if not spec or spec.get("configured") is False:
+        raise ValueError("输出规格尚未配置，不能自动推定")
+    layout = select_layout(facts, output_type, asset_count)
     creative = creative_direction(facts)
-    titles = [store_name or focus or "一餐的好心情", focus or creative["headline"],
-              primary_point or "把这一餐留给自己", secondary_point or "约上喜欢的人",
-              hero_price or "今天，就来这里"]
-    supports = [positioning or "从这里，开启今天的美味",
-                primary_point if primary_point != focus else "",
-                secondary_point, "一起享受用餐时光", store_name or "发现你的下一餐"]
-    for index, frame in enumerate(frames):
-        frame.update(headline=titles[index], support=supports[index],
-                     visual=creative["visuals"][index])
+    store_name = _text(facts.get("store_name"), "") if facts.get("show_store_name", True) else ""
+    focus = _text(facts.get("hero_item"), "") or _text(facts.get("selling_points"), "") or _text(facts.get("positioning"), "")
+    copy = {"store_name": store_name, "headline": focus or creative["headline"],
+            "subheadline": _text(facts.get("positioning"), ""),
+            "price": _text(facts.get("hero_price"), "") if facts.get("show_price", True) else ""}
+    validate_copy(copy)
     return {
-        "template_version": "continuous-food-master-v2",
-        "canvas": {"ratio": "20:3", "recommended_size": "4000x600", "slice_count": 5, "slice_ratio": "4:3", "slice_size": "800x600"},
-        "style": {"key": style, **deepcopy(preset)},
-        "copy": {"headline": titles[1], "subheadline": supports[1], "store_name": store_name, "price": hero_price},
-        "frames": frames,
+        "template_version": "region-master-v3", "output_type": output_type,
+        "canvas": {"ratio": spec["ratio"], "recommended_size": f'{spec["size"][0]}x{spec["size"][1]}',
+                   "slice_count": spec["slices"], "slice_ratio": "4:3", "slice_size": "800x600"},
+        "layout": layout, "style": {"key": style, **deepcopy(STYLE_PRESETS.get(style, STYLE_PRESETS["appetite"]))},
+        "copy": copy, "copy_policy_version": "copywriting-v1",
+        # Compatibility metadata for existing review UI; never used as composition regions.
+        "frames": [{"index": i+1, "role": f"导出切片{i+1}", "headline": "", "support": "",
+                    "visual": "完整设计输出后的裁切区域，不约束构图"} for i in range(spec["slices"])],
         "creative_direction": creative,
-        "locked_facts": {
-            "store_name": store_name,
-            "positioning": positioning,
-            "hero_item": hero_item,
-            "hero_price": hero_price,
-            "selling_points": selling_points,
-        },
-        "guardrails": ["不得改写门店名称", "不得编造价格与优惠", "不得添加未确认资质或功效", "正文文字由排版层渲染，不由生图模型绘制"],
+        "locked_facts": {"store_name": store_name, "hero_item": _text(facts.get("hero_item"), ""),
+                         "positioning": _text(facts.get("positioning"), ""),
+                         "selling_points": facts.get("selling_points") if isinstance(facts.get("selling_points"), list) else ([facts["selling_points"]] if facts.get("selling_points") else []), "hero_price": copy["price"]},
+        "guardrails": ["事实不可编造", "不得编造价格与优惠", "门头原图绝不入画", "构图必须来自模板库", "整体风格一致"],
     }
 
 
@@ -82,7 +66,7 @@ def creative_direction(facts):
     if facts.get("hero_item"):
         subject = f"围绕用户提供的本次重点「{_text(facts['hero_item'], '')}」设计主题静物；非菜品主题不能画成菜名"
     return {
-        "category": category, "headline": headline, "source": "creative_interpretation_not_menu",
+        "category": category, "headline": headline, "subject": subject, "source": "creative_interpretation_not_menu",
         "visuals": [
             f"品牌开场，{subject}，主体偏右",
             f"主视觉，{subject}，近景突出质感",
@@ -95,11 +79,19 @@ def creative_direction(facts):
 
 
 def validate_design_plan(plan):
+    from app.services.layout_catalog import validate_layout, OUTPUT_SPECS
+    from app.services.copy_policy import validate_copy
+    if plan.get("template_version") == "region-master-v3":
+        validate_layout(plan.get("layout", {}))
+        spec = OUTPUT_SPECS.get(plan.get("output_type"), {})
+        if plan.get("output_type") not in plan["layout"]["outputs"] or plan["canvas"]["ratio"] != spec.get("ratio") or plan["canvas"]["slice_count"] != spec.get("slices"):
+            raise ValueError("输出规格与模板不一致")
+        validate_copy(plan["copy"])
+        return
+    # Keep previously confirmed snapshots readable; new plans never use this branch.
     frames = plan.get("frames", [])
-    if len(frames) != 5 or [f.get("index") for f in frames] != list(range(1, 6)):
-        raise ValueError("五图方案缺少完整的五个内容区域")
-    if any(not str(f.get("headline", "")).strip() or not str(f.get("visual", "")).strip() for f in frames):
-        raise ValueError("五图方案存在空标题或空画面规划，不能交付空背景")
+    if len(frames) != 5 or any(not f.get("headline") for f in frames):
+        raise ValueError("历史方案不完整")
 
 
 def update_design_plan(plan: dict, *, style: str | None = None, headline: str | None = None, subheadline: str | None = None) -> dict:

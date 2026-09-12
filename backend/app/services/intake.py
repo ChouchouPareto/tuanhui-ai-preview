@@ -251,6 +251,7 @@ def compile_intake(db, creation, payload):
         messages.append({"role": "user", "content": message or "使用这些素材做五图"})
         messages.append({"role": "assistant", "content": conversation_reply(gaps, facts)})
     return {"schema_version": 2, "text": text, "messages": messages, "render_mode": "illustration" if illustration else "real_assets", "facts": facts, "sources": sources,
+            "design_references": {"brand_color": memory.facts.get("brand_color"), "source": "confirmed_project_facts", "fact_version": memory.version} if memory and memory.facts.get("brand_color") else {},
             "assets": manifest, "show_price": bool(show_price), "show_store_name": show_store,
             "style": design_style, "provider": payload.provider, "gaps": gaps,
             "project_changes": changes, "scope": "this_creation_only", "ready": not gaps,

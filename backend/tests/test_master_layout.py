@@ -21,7 +21,7 @@ def test_background_prompt_ignores_old_scene_instructions():
     plan = build_design_plan({"store_name": "测试店", "hero_item": "蒸鱼"})
     plan["frames"][0]["visual"] = "旧版强制门头场景"
     assert "旧版强制门头场景" not in build_visual_prompt(plan)
-    assert "不由你绘制" in build_visual_prompt(plan)
+    assert "不绘制食物" in build_visual_prompt(plan)
 
 
 def test_master_uses_real_asset_and_exact_slices(tmp_path):
@@ -33,7 +33,8 @@ def test_master_uses_real_asset_and_exact_slices(tmp_path):
     plan = build_design_plan({"store_name": "测试餐厅", "hero_item": "招牌蒸鱼", "selling_points": ["现点现做"]})
     result = render_and_slice(background.getvalue(), plan, tmp_path / "out", [dish])
     with Image.open(tmp_path / "out" / result["long_image"]) as master:
-        assert master.getpixel((2000, 300)) == (11, 211, 71)
+        region = next(r["box"] for r in plan["layout"]["regions"] if r["role"] == "visual")
+        assert master.getpixel((round((region[0]+region[2]/2)*4000), round((region[1]+region[3]/2)*600))) == (11, 211, 71)
         for index, filename in enumerate(result["slices"]):
             with Image.open(tmp_path / "out" / filename) as part:
                 assert ImageChops.difference(master.crop((800*index, 0, 800*(index+1), 600)), part).getbbox() is None

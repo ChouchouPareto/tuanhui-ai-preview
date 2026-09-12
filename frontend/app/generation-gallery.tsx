@@ -5,21 +5,28 @@ import { useRef, useState } from "react";
 import { apiUrl } from "../lib/api-client";
 import "./generation-gallery.css";
 
-export function GenerationGallery({ projectId, taskId, longImage, slices = [] }: {
-  projectId: string; taskId: string; longImage?: string; slices?: string[];
+export function GenerationGallery({ projectId, taskId, longImage, slices = [], cleanLongImage, cleanSlices = [] }: {
+  projectId: string; taskId: string; longImage?: string; slices?: string[]; cleanLongImage?: string; cleanSlices?: string[];
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState(0);
   const [zoomed, setZoomed] = useState(false);
+  const [clean, setClean] = useState(false);
+  const supportsClean = !!cleanLongImage && cleanSlices.length === slices.length;
   const items = [
-    ...(longImage ? [{ file: longImage, label: "完整五连图", long: true }] : []),
-    ...slices.map((file, i) => ({ file, label: `第 ${i + 1} 张切片`, long: false })),
+    ...(longImage ? [{ file: clean && supportsClean ? cleanLongImage! : longImage, label: "完整五连图", long: true }] : []),
+    ...slices.map((file, i) => ({ file: clean && supportsClean ? cleanSlices[i] : file, label: `第 ${i + 1} 张切片`, long: false })),
   ];
   const url = (file: string) => apiUrl(`/projects/${projectId}/generations/${taskId}/assets/${file}`);
   const current = items[selected];
   const move = (step: number) => { setSelected(i => (i + step + items.length) % items.length); setZoomed(false); };
   if (!items.length) return null;
   return <section className="generationGallery" aria-label="生成作品">
+    {supportsClean && <div className="generationExportOptions" role="group" aria-label="导出水印版本">
+      <span>预览与下载</span>
+      <button type="button" aria-pressed={!clean} onClick={() => setClean(false)}>带水印</button>
+      <button type="button" aria-pressed={clean} onClick={() => setClean(true)}>无水印</button>
+    </div>}
     <div className="generationGalleryGrid">{items.map((item, index) => <figure key={item.file} className={item.long ? "generationGalleryLong" : ""}>
       <button className="generationPreviewButton" type="button" aria-label={`预览${item.label}`} onClick={() => {
         setSelected(index); setZoomed(false); dialog.current?.showModal();

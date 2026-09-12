@@ -130,10 +130,24 @@ class OCRPayload(BaseModel):
     store_name_candidates: list["StoreNameCandidate"] = Field(default_factory=list)
     needs_confirmation: bool = False
     products: list[MenuProduct] = Field(default_factory=list)
+    visual_observations: list["VisualObservation"] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def enforce_storefront_selection(self):
+        def compact(value):
+            return "".join(value.split()).casefold()
+        visible = compact(self.visible_text)
+        invalid = any(compact(item.name) not in visible or compact(item.evidence) not in visible
+                      for item in self.store_name_candidates)
+        if invalid:
+            self.store_name = None
+            self.needs_confirmation = True
+            return self
         names = {item.name for item in self.store_name_candidates}
+        if len(names) == 1 and any(item.confidence < .9 for item in self.store_name_candidates):
+            self.store_name = None
+            self.needs_confirmation = True
+            return self
         if len(names) > 1:
             self.store_name = None
             self.needs_confirmation = True
@@ -146,6 +160,16 @@ class OCRPayload(BaseModel):
         elif not self.store_name and names:
             self.needs_confirmation = True
         return self
+
+
+class VisualObservation(BaseModel):
+    kind: Literal["color", "style", "logo_hint"]
+    value: str = Field(min_length=1, max_length=200)
+    region: str = Field(min_length=1, max_length=200)
+    evidence: str = Field(min_length=1, max_length=500)
+    confidence: float = Field(ge=0, le=1)
+    # Visual clues are not verified logo assets or business claims.
+    status: Literal["candidate"] = "candidate"
 
 
 class StoreNameCandidate(BaseModel):

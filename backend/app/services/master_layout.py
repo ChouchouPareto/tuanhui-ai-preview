@@ -49,6 +49,8 @@ def fitted_text(draw, text, box, font_factory, color, size=60):
 
 def compose_master(background, plan, assets, font_factory):
     """One canvas; slice boundaries constrain text, not five independent scenes."""
+    if plan.get("template_version") == "region-master-v3":
+        return compose_regions(background, plan, assets, font_factory)
     base, ink, accent = PALETTES.get(plan.get("style", {}).get("key"), PALETTES["appetite"])
     canvas = Image.new("RGB", (4000, 600), base)
     # The model only supplies decorative texture, so padding is safer than cropping.
@@ -95,14 +97,58 @@ def compose_master(background, plan, assets, font_factory):
     return canvas
 
 
+def compose_regions(background, plan, assets, font_factory):
+    width, height = map(int, plan["canvas"]["recommended_size"].split("x"))
+    base, ink, accent = PALETTES.get(plan["style"]["key"], PALETTES["appetite"])
+    texture = ImageOps.fit(background.convert("RGB"), (width, height), Image.Resampling.LANCZOS)
+    real = plan.get("render_mode") != "illustration"
+    canvas = Image.blend(Image.new("RGB", (width, height), base), texture, .16) if real else texture
+    dishes = eligible_dishes(assets)
+    visual_regions = [r for r in plan["layout"]["regions"] if r["role"] == "visual"]
+    if real:
+        for region, asset in zip(visual_regions, dishes):
+            x, y, w, h = region["box"]
+            with Image.open(asset.storage_path) as source:
+                photo = ImageOps.contain(ImageOps.exif_transpose(source).convert("RGBA"),
+                                         (round(w*width), round(h*height)), Image.Resampling.LANCZOS)
+            canvas.paste(photo, (round(x*width+(w*width-photo.width)/2),
+                                round(y*height+(h*height-photo.height)/2)), photo)
+    draw = ImageDraw.Draw(canvas)
+    area = next(r["box"] for r in plan["layout"]["regions"] if r["role"] == "copy")
+    x, y, w, h = area[0]*width, area[1]*height, area[2]*width, area[3]*height
+    entries = [(key, plan["copy"].get(key)) for key in ("store_name", "headline", "subheadline", "price") if plan["copy"].get(key)]
+    # Only actual information consumes space; no mandatory text per export slice.
+    weights = {"store_name": 1.2, "headline": 2, "subheadline": 1, "price": 1.3}
+    total = sum(weights[key] for key, _ in entries)
+    for key, value in entries:
+        slot = h * weights[key] / total
+        fitted_text(draw, value, (x, y, w, slot-8), font_factory,
+                    accent if key == "price" else ink, 74 if key == "headline" else 50)
+        y += slot
+    return canvas
+
+
+def add_export_watermark(canvas, slice_count, font_factory):
+    marked = canvas.copy()
+    draw = ImageDraw.Draw(marked)
+    width, height = marked.size
+    for i in range(slice_count):
+        x = i * (width // slice_count) + 20
+        # Export-only overlay; the clean master is never mutated.
+        draw.rounded_rectangle((x, height-48, x+232, height-12), radius=5, fill="#333333")
+        fitted_text(draw, "AI示意 · 非实拍", (x+8,height-46,216,32), font_factory, "#ffffff", 22)
+    return marked
+
+
 def save_manifest(output_dir: Path, plan, assets):
     manifest = {
-        "template": plan.get("template_version"), "canvas": [4000, 600],
-        "slice_boxes": [[i*800, 0, (i+1)*800, 600] for i in range(5)],
+        "template": plan.get("template_version"), "canvas": list(map(int, plan["canvas"]["recommended_size"].split("x"))),
+        "slice_boxes": [[i*800, 0, (i+1)*800, 600] for i in range(plan["canvas"]["slice_count"])],
         "style": plan["style"], "copy": plan["copy"],
         "frames": plan["frames"], "creative_direction": plan.get("creative_direction"),
         "render_mode": plan.get("render_mode", "real_assets"),
-        "asset_ids": [a.id for a in eligible_dishes(assets)[:3]],
+        "layout": plan.get("layout"), "watermark": "export-layer-only" if plan.get("layout") else "legacy",
+        "asset_ids": [a.id for a in eligible_dishes(assets)[:sum(r["role"] == "visual" for r in plan["layout"]["regions"]) if plan.get("layout") else 3]],
         "asset_policy": "product + dish/signature_dish only; storefront/menu excluded",
         "photo_mode": "original-contained; no automatic cutout or invented dishes",
     }

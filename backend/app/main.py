@@ -31,7 +31,7 @@ app.include_router(creation_router)
 def health():
     with SessionLocal() as db:
         ready = worker_available(db)
-    return {"status": "ok", "version": "0.9.8", "generation_contract": "five_panel_composition_v2", "generation_worker_ready": ready, "stage": "M1-rules-internal", "default_flow": "intake-confirmation", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
+    return {"status": "ok", "version": "0.10.0", "generation_contract": "region-master-v3", "generation_worker_ready": ready, "stage": "M1-rules-internal", "default_flow": "intake-confirmation", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
 
 
 @app.exception_handler(Exception)

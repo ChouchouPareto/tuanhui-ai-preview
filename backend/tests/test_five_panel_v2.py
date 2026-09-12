@@ -20,19 +20,20 @@ def test_short_request_is_not_another_form(text):
     assert parse_text(text)["store_name"] == "山西面馆"
 
 
-def test_brand_only_has_five_nonempty_content_regions():
+def test_brand_only_has_registered_whole_canvas_layout():
     plan = build_design_plan({"store_name": "山西面馆", "show_price": False})
     plan["render_mode"] = "illustration"
     validate_design_plan(plan)
     assert plan["creative_direction"]["category"] == "面食"
     assert not plan["locked_facts"]["hero_item"]
     assert plan["copy"]["price"] == ""
-    assert len({f["headline"] for f in plan["frames"]}) == 5
+    assert all(not f["headline"] for f in plan["frames"])
+    assert plan["layout"]["id"].startswith("L")
     prompt = build_visual_prompt(plan)
-    assert "面食" in prompt and "每个区域都要有完整可辨的主体" in prompt
+    assert "面食" in prompt and "不要求每片有标题或主体" in prompt
     assert "仅提供了店名：制作抽象" not in prompt
     assert "左右各五分之一留白" not in prompt
-    assert "不编造价格" in prompt
+    assert "缺少价格时省略价格" in prompt
 
 
 def test_hidden_brand_and_price_are_not_reintroduced():
@@ -49,7 +50,7 @@ def test_unknown_brand_uses_still_life_not_fake_menu():
     assert not plan["locked_facts"]["hero_item"]
 
 
-def test_all_five_titles_reach_the_pixels_and_slices(tmp_path):
+def test_copy_reaches_template_region_and_exact_slices(tmp_path):
     plan = build_design_plan({"store_name": "山西面馆"})
     plan["render_mode"] = "illustration"
     # Synthetic model output verifies composition, not model aesthetic quality.
@@ -61,18 +62,16 @@ def test_all_five_titles_reach_the_pixels_and_slices(tmp_path):
     background.save(raw, "PNG")
     result = render_and_slice(raw.getvalue(), plan, tmp_path)
     no_text = json.loads(json.dumps(plan))
-    for frame in no_text["frames"]:
-        frame["headline"] = ""
-        frame["support"] = ""
+    no_text["copy"] = {}
     comparison = compose_master(background, no_text, [], _font)
+    with Image.open(tmp_path / "long-clean.png") as clean:
+        assert ImageChops.difference(clean, comparison).getbbox()
     with Image.open(tmp_path / "long.png") as master:
         for i, file in enumerate(result["slices"]):
-            box = (i*800, 350, (i+1)*800, 534)
-            assert ImageChops.difference(master.crop(box), comparison.crop(box)).getbbox()
             with Image.open(tmp_path / file) as part:
                 assert ImageChops.difference(master.crop((i*800,0,(i+1)*800,600)),part).getbbox() is None
     audit = json.loads((tmp_path / "generation-audit.json").read_text())
-    assert audit["contract"] == "five_panel_composition_v2"
+    assert audit["contract"] == "region-master-v3"
     assert audit["quality_checks"]["semantic_visual_review"] == "not_automated"
 
 
@@ -85,7 +84,7 @@ def test_empty_plan_is_rejected_before_model(client, monkeypatch):
         db.add(task); db.commit()
         plan = build_design_plan({"store_name": "山西面馆"})
         plan["render_mode"] = "illustration"
-        plan["frames"][2]["headline"] = ""
+        plan["copy"] = {}
         monkeypatch.setattr(image_generation, "call_qwen", lambda *a: pytest.fail("Invalid plan must not charge"))
         image_generation.run_generation(db, project, task, SimpleNamespace(plan=plan), "qwen", False)
         assert task.status == TaskStatus.FAILED_FINAL
@@ -116,4 +115,4 @@ def test_actual_user_request_to_worker_mock(client, monkeypatch):
         assert task.status == TaskStatus.SUCCEEDED
         assert len(calls) == 1
         assert len(task.result["slices"]) == 5
-        assert plan.plan["template_version"] == "continuous-food-master-v2"
+        assert plan.plan["template_version"] == "region-master-v3"

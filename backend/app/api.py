@@ -405,7 +405,8 @@ def get_generated_asset(project_id: str, task_id: str, filename: str, db: Sessio
     task = db.get(WorkflowTask, task_id)
     if task is None or task.project_id != project_id or task.task_type != "group_buying_image_generation":
         raise HTTPException(status_code=404, detail="生图任务不存在")
-    allowed = {task.result.get("long_image"), *(task.result.get("slices") or [])}
+    allowed = {task.result.get("long_image"), *(task.result.get("slices") or []),
+               task.result.get("clean_long_image"), *(task.result.get("clean_slices") or [])}
     if filename not in allowed:
         raise HTTPException(status_code=404, detail="生成图片不存在")
     path = settings.generated_dir / project_id / task_id / filename

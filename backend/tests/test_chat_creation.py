@@ -71,7 +71,7 @@ def test_illustration_slices_are_exact_and_have_label(tmp_path):
             with Image.open(tmp_path / filename) as part:
                 assert ImageChops.difference(master.crop((800*index, 0, 800*(index+1), 600)), part).getbbox() is None
                 # Label region is not a flat background; every exported slice has lettering.
-                assert len(part.crop((28, 540, 238, 572)).getcolors(10000)) > 1
+                assert len(part.crop((28, 554, 238, 586)).getcolors(10000)) > 1
 
 
 def test_style_reply_changes_plan_without_reasking_name(client):
@@ -98,4 +98,4 @@ def test_brand_only_illustration_does_not_repeat_store_question(client, monkeypa
     with SessionLocal() as db:
         plan = db.scalar(select(DesignPlan)).plan
         assert plan["copy"]["store_name"] == "袁记云饺"
-        assert "不能根据品牌名称猜测菜单" in build_visual_prompt(plan)
+        assert "不代表真实菜单" in build_visual_prompt(plan)

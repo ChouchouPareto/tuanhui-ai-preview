@@ -113,9 +113,9 @@ def run_bailian_analysis(db: Session, project: StoreProject, task: WorkflowTask)
     products = []
     try:
         for asset in assets:
-            if asset.semantic_role not in {"menu", "signature_dish", "dish", "storefront"}:
+            if asset.semantic_role not in {"menu", "signature_dish", "dish", "storefront", "environment"}:
                 continue
-            analysis_type = "storefront" if asset.semantic_role == "storefront" else "menu"
+            analysis_type = asset.semantic_role if asset.semantic_role in {"storefront", "environment"} else "menu"
             result, meta = recognize_image(asset.storage_path, asset.mime_type, analysis_type)
             _record_call(db, project.id, task.id, f"ocr:{analysis_type}", meta)
             item = result.model_dump()
@@ -150,6 +150,7 @@ def run_bailian_analysis(db: Session, project: StoreProject, task: WorkflowTask)
         evidence = {
             "store_name": {"source": "project_input", "confidence": 1.0},
             "model_analysis": {"source_assets": [item["asset_id"] for item in ocr_results], "provider": "bailian", "ocr_model": settings.bailian_ocr_model, "vision_model": settings.bailian_vision_model},
+            "ocr_records": ocr_results,
         }
         return _persist_analysis(db, project, task, facts, evidence, "bailian")
     except ModelGatewayError as exc:
