@@ -1,4 +1,7 @@
 import uuid
+import copy
+from typing import Literal
+from pydantic import BaseModel, Field
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
@@ -14,6 +17,7 @@ from app.services.analysis import coverage_for, merge_answers, run_analysis, run
 from app.services.design_plan import build_design_plan, update_design_plan
 from app.services.image_generation import run_generation
 from app.services.storage import store_upload
+from app.models import ProjectDisplayState, Creation, CreationConfirmation, IntakeRevision
 
 
 router = APIRouter(prefix="/api/v1")
@@ -35,16 +39,67 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/projects")
-def list_projects(db: Session = Depends(get_db)):
+def list_projects(visibility: Literal["visible", "hidden", "deleted"] = "visible", db: Session = Depends(get_db)):
     projects = db.scalars(select(StoreProject).order_by(StoreProject.updated_at.desc())).all()
     result = []
     for project in projects:
+        display = db.get(ProjectDisplayState, project.id)
+        if (display.visibility if display else "visible") != visibility:
+            continue
         tasks = db.scalars(select(WorkflowTask).where(WorkflowTask.project_id == project.id, WorkflowTask.task_type == "group_buying_image_generation").order_by(WorkflowTask.created_at.desc())).all()
         cover = next((t for t in tasks if t.status == TaskStatus.SUCCEEDED and (t.result or {}).get("long_image")), None)
         result.append({"id": project.id, "name": project.name, "status": project.status,
                        "updated_at": project.updated_at, "task_count": len(tasks),
                        "cover": f"/projects/{project.id}/generations/{cover.id}/assets/{cover.result['long_image']}" if cover else None})
     return result
+
+
+class ProjectEdit(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    visibility: Literal["visible", "hidden", "deleted"] | None = None
+
+
+@router.patch("/projects/{project_id}")
+def edit_project(project_id: str, payload: ProjectEdit, db: Session = Depends(get_db)):
+    project = require_project(db, project_id)
+    display = db.get(ProjectDisplayState, project_id) or ProjectDisplayState(project_id=project_id)
+    if payload.name is not None:
+        if not payload.name.strip():
+            raise HTTPException(422, "项目名称不能为空")
+        project.name = payload.name.strip()
+        display.custom_name = True
+    if payload.visibility:
+        if payload.visibility == "deleted" and db.scalar(select(WorkflowTask.id).where(WorkflowTask.project_id == project_id, WorkflowTask.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING])).limit(1)):
+            raise HTTPException(409, "项目仍有运行中的任务，请先停止任务再移入回收站")
+        display.visibility = payload.visibility
+    project.updated_at = utc_now()
+    db.add(display)
+    db.commit()
+    return {"id": project.id, "name": project.name, "visibility": display.visibility}
+
+
+@router.post("/projects/{project_id}/duplicate", status_code=201)
+def duplicate_project(project_id: str, db: Session = Depends(get_db)):
+    original = require_project(db, project_id)
+    project = StoreProject(name=original.name[:115] + " · 副本", industry=original.industry, platforms=copy.deepcopy(original.platforms))
+    db.add(project)
+    db.flush()
+    for asset in db.scalars(select(SourceAsset).where(SourceAsset.project_id == project_id)).all():
+        values = {column.name: copy.deepcopy(getattr(asset, column.name)) for column in SourceAsset.__table__.columns if column.name not in {"id", "project_id", "created_at"}}
+        db.add(SourceAsset(project_id=project.id, **values))
+    fact = db.scalar(select(FactVersion).where(FactVersion.project_id == project_id).order_by(FactVersion.version.desc()))
+    if fact:
+        values = {column.name: copy.deepcopy(getattr(fact, column.name)) for column in FactVersion.__table__.columns if column.name not in {"id", "project_id", "created_at", "version"}}
+        db.add(FactVersion(project_id=project.id, version=1, **values))
+        project.current_fact_version = 1
+    else:
+        revision = db.scalar(select(IntakeRevision).join(Creation, Creation.id == IntakeRevision.creation_id).where(Creation.project_id == project_id).order_by(IntakeRevision.created_at.desc()).limit(1))
+        if revision:
+            db.add(FactVersion(project_id=project.id, version=1, facts=copy.deepcopy(revision.snapshot.get("facts", {}))))
+            project.current_fact_version = 1
+    db.add(ProjectDisplayState(project_id=project.id, custom_name=True))
+    db.commit()
+    return {"project_id": project.id, "name": project.name}
 
 
 @router.get("/projects/{project_id}/workspace")
@@ -54,6 +109,7 @@ def project_workspace(project_id: str, db: Session = Depends(get_db)):
     fact = db.scalar(select(FactVersion).where(FactVersion.project_id == project_id).order_by(FactVersion.version.desc()))
     plan = db.scalar(select(DesignPlan).where(DesignPlan.project_id == project_id).order_by(DesignPlan.version.desc()))
     return {"id": project.id, "name": project.name, "facts": fact.facts if fact else {},
+            "latest_creation_id": db.scalar(select(Creation.id).where(Creation.project_id == project_id).order_by(Creation.created_at.desc()).limit(1)),
             "style": plan.plan.get("style") if plan else None,
             "tasks": [{"id": t.id, "status": t.status, "created_at": t.created_at,
                        "progress": t.progress, "result": t.result or {}, "error": t.error_message} for t in tasks]}
@@ -168,7 +224,7 @@ def get_task(task_id: str, db: Session = Depends(get_db)):
     task = db.get(WorkflowTask, task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
-    return {"id": task.id, "project_id": task.project_id, "status": task.status, "progress": task.progress, "result": task.result, "error": {"code": task.error_code, "message": task.error_message} if task.error_code else None}
+    return {"id": task.id, "project_id": task.project_id, "creation_id": db.scalar(select(CreationConfirmation.creation_id).where(CreationConfirmation.task_id == task.id)), "status": task.status, "progress": task.progress, "result": task.result, "error": {"code": task.error_code, "message": task.error_message} if task.error_code else None}
 
 
 @router.get("/projects/{project_id}/coverage")

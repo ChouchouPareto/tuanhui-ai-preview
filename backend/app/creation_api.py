@@ -8,6 +8,7 @@ from app.models import Creation, CreationConfirmation, DesignPlan, IntakeRevisio
 from app.services.design_plan import build_design_plan
 from app.services.worker_status import worker_available
 from app.services.project_naming import update_project_name
+from app.models import ProjectDisplayState
 from app.services.intake import (CreateInput, IntakeInput, ConfirmInput, asset_manifest, compile_intake,
                                  digest, fail, require_creation, review, selected_assets)
 
@@ -55,7 +56,8 @@ def intake(project_id: str, creation_id: str, payload: IntakeInput,
     if changed.rowcount != 1:
         db.rollback()
         fail("STALE_REVISION", "资料已更新，请刷新后重新检查")
-    if creation.mode == "oneclick":
+    display = db.get(ProjectDisplayState, project_id)
+    if creation.mode == "oneclick" and not (display and display.custom_name):
         update_project_name(db.get(StoreProject, project_id), snapshot, previous_revision.snapshot if previous_revision else None)
     db.add(IntakeRevision(creation_id=creation_id, revision=next_revision, request_key=idempotency_key,
                          request_hash=request_hash, snapshot=snapshot, snapshot_hash=digest(snapshot)))

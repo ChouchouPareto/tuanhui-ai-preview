@@ -93,6 +93,13 @@ class StoreProject(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
+class ProjectDisplayState(Base):
+    __tablename__ = "project_display_states"
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), primary_key=True)
+    visibility: Mapped[str] = mapped_column(String(20), default="visible")
+    custom_name: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class SourceAsset(Base):
     __tablename__ = "source_assets"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

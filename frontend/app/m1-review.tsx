@@ -9,7 +9,7 @@ import { canConfirmDraft, draftKey, DraftInput } from "../lib/intake-state";
 export type IntakeSeed = { text: string; assetIds: string[]; nonce: string };
 export type Snapshot = { render_mode?: string; messages?: { role: string; content: string }[]; schema_version?: number; text: string; facts: Record<string, string | string[]>; sources: Record<string, string>; assets: { id: string; name: string; usage: string }[]; show_price: boolean; show_store_name: boolean; style: string; provider: string; gaps: { field: string; question: string; kind: string }[]; ready: boolean; project_changes: string[] };
 type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; project_name?: string };
-type Task = { id: string; status: string; progress: number; result: { long_image?: string; slices?: string[] }; error?: { code: string; message: string } };
+type Task = { id: string; project_id?: string; creation_id?: string; status: string; progress: number; result: { long_image?: string; slices?: string[] }; error?: { code: string; message: string } };
 export type IntakeController = { revise: () => Promise<void>; pause: () => Promise<void> };
 type Props = { autoGenerate?: () => boolean; onGenerationActive?: (active: boolean) => void; target: HTMLElement | null; controller: Ref<IntakeController>; projectId: string; seed: IntakeSeed | null; draft: DraftInput; prepare: () => Promise<DraftInput>; onRestore: (snapshot: Snapshot) => void; onReply: (field?: string) => void; onAssets: () => void; onBusy: (busy: boolean) => void };
 
@@ -37,10 +37,30 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
 
   useEffect(() => {
     let stopped = false;
-    const saved = new URLSearchParams(window.location.search).get("creation");
-    if (saved && !seed) void apiRequest<Review>(`${base}/${saved}/review`).then(next => { if (!stopped) apply(next, true); }).catch(report);
+    const params = new URLSearchParams(window.location.search);
+    if (!seed && params.get("compose") !== "1") void (async () => {
+      let saved = params.get("creation");
+      let savedTask = params.get("task");
+      if (!saved && !savedTask) {
+        const workspace = await apiRequest<{latest_creation_id?: string; tasks: Task[]}>(`/projects/${projectId}/workspace`);
+        saved = workspace.latest_creation_id || null;
+        if (!saved) savedTask = workspace.tasks[0]?.id || null;
+      }
+      if (!saved && savedTask) {
+        const restored = await apiRequest<Task>(`/tasks/${savedTask}`);
+        if (restored.project_id && restored.project_id !== projectId) throw new Error("该结果不属于当前项目");
+        if (stopped) return;
+        saved = restored.creation_id || null;
+        setTask(restored);
+        if (!saved) apply({creation_id: "", revision: 0, status: "CONFIRMED", snapshot_hash: "", snapshot: null, task_id: restored.id});
+      }
+      if (saved) {
+        const next = await apiRequest<Review>(`${base}/${saved}/review`);
+        if (!stopped) apply(next, true);
+      }
+    })().catch(e => { if (!stopped) report(e); });
     return () => { stopped = true; };
-  }, [base, seed]);
+  }, [base, projectId, seed]);
 
   async function revise(initial?: IntakeSeed) {
     if (sending.current || (task && ["PENDING", "RUNNING"].includes(task.status))) return;
