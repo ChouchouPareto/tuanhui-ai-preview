@@ -68,7 +68,8 @@ def test_output_catalog_matches_confirmed_rules():
     assert FULL_PLAN_DEFAULTS==["voucher_main","five_panel","logo"]
     for kind in ("logo","package_main","voucher_main"):
         assert OUTPUT_SPECS[kind]["safe_area"]==[.125,0,.75,1]
-    assert OUTPUT_SPECS["detail"]["configured"] is False
+    assert OUTPUT_SPECS["detail"]["ratio"] == "4:3"
+    assert OUTPUT_SPECS["store_decoration"]["slices"] == 1
 
 
 @pytest.mark.parametrize("confidence,evidence,visible", [

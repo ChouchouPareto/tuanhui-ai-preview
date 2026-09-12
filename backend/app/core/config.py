@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     bailian_vision_model: str = "qwen3-vl-plus"
     qwen_image_base_url: str = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
     qwen_image_model: str = "qwen-image-3.0"
+    # The structured planner already supplies complete composition instructions.
+    # Keep provider rewriting opt-in; thinking requires rewriting on Qwen 3.0.
+    qwen_image_prompt_extend: bool = False
+    qwen_image_enable_thinking: bool = False
     ark_api_key: str = ""
     ark_image_base_url: str = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
     doubao_image_model: str = "doubao-seedream-5-0-260128"

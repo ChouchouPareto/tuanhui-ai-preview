@@ -237,6 +237,23 @@ def task_activity(project_id: str, task_id: str, db: Session = Depends(get_db)):
     return activity(db, project_id, task_id=task_id)
 
 
+@router.get("/projects/{project_id}/usage")
+def project_usage(project_id: str, db: Session = Depends(get_db)):
+    """Local audit endpoint: measured usage, not a fabricated bill or token estimate."""
+    from app.models import ModelCallRecord, ModelUsageRecord
+    require_project(db, project_id)
+    calls = db.scalars(select(ModelCallRecord).where(ModelCallRecord.project_id == project_id).order_by(ModelCallRecord.created_at.desc()).limit(200)).all()
+    meters = {m.call_id: m for m in db.scalars(select(ModelUsageRecord).where(ModelUsageRecord.call_id.in_([c.id for c in calls]))).all()} if calls else {}
+    return {"project_id": project_id, "limit": 200, "billing_note": "用量不等于账单；未返回的用量记为空，不记为零。费用以供应商账单为准。", "calls": [
+        {"task_id": c.task_id, "provider": c.provider, "model": c.model, "status": c.status,
+         "duration_ms": c.duration_ms, "input_tokens": c.input_tokens, "output_tokens": c.output_tokens,
+         "image_usage": meters[c.id].usage if c.id in meters else None,
+         "request_ms": meters[c.id].request_ms if c.id in meters else None,
+         "download_ms": meters[c.id].download_ms if c.id in meters else None,
+         "prompt_characters": meters[c.id].prompt_characters if c.id in meters else None,
+         "created_at": c.created_at.isoformat()} for c in calls]}
+
+
 @router.get("/projects/{project_id}/coverage")
 def get_coverage(project_id: str, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
@@ -380,10 +397,31 @@ def execute_generation(project_id: str, task_id: str, plan_id: str, provider: st
 @router.post("/projects/{project_id}/generation-runs", status_code=202)
 def start_generation(project_id: str, background: BackgroundTasks, payload: GenerationRunRequest, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
+    from app.services.creative_workflow import reserve_context
+    from app.services.layout_catalog import select_layout
+    from app.services.master_layout import eligible_dishes
+    recent = reserve_context(db, project_id)
     plan = db.scalar(select(DesignPlan).where(DesignPlan.project_id == project_id).order_by(DesignPlan.version.desc()))
     if plan is None or plan.status != "CONFIRMED":
         raise HTTPException(status_code=409, detail="请先确认五图设计方案")
+    active = db.scalar(select(WorkflowTask).where(WorkflowTask.project_id == project_id,
+        WorkflowTask.task_type == "group_buying_image_generation", WorkflowTask.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING])).order_by(WorkflowTask.created_at.desc()))
+    if active:
+        db.rollback()
+        return {"task_id": active.id, "status": active.status, "provider": payload.provider, "allow_fallback": payload.allow_fallback}
+    if plan.plan.get("deliverables"):
+        db.rollback()
+        raise HTTPException(status_code=409, detail="全案或多张详情页请在一键生图中继续创作，先确认本次包含的项目及调用次数。")
+    if plan.plan.get("template_version") == "region-master-v3":
+        data = copy.deepcopy(plan.plan)
+        dishes = eligible_dishes(db.scalars(select(SourceAsset).where(SourceAsset.project_id == project_id)).all())
+        if data.get("output_type", "five_panel") in {"five_panel", "three_panel"}:
+            data["layout"] = select_layout(data["locked_facts"], data.get("output_type", "five_panel"), len(dishes), excluded_ids=recent, selection_key=str(uuid.uuid4()))
+        plan = DesignPlan(project_id=project_id, fact_version=plan.fact_version, version=plan.version+1,
+                          status="CONFIRMED", confirmed_at=utc_now(), plan=data)
+        db.add(plan); db.flush()
     task = WorkflowTask(project_id=project_id, task_type="group_buying_image_generation")
+    task.result = {"design_plan_id": plan.id}
     db.add(task)
     db.commit()
     background.add_task(execute_generation, project_id, task.id, plan.id, payload.provider, payload.allow_fallback)
@@ -403,6 +441,10 @@ def pause_generation(task_id: str, db: Session = Depends(get_db)):
     task.status = TaskStatus.NEEDS_USER
     task.error_code = "PAUSED_BY_USER"
     task.error_message = "已暂停；继续生成会重新发起模型调用"
+    for entry in task.result.get("deliverables", []):
+        child = db.get(WorkflowTask, entry.get("task_id"))
+        if child and child.project_id == task.project_id and child.status in {TaskStatus.PENDING, TaskStatus.RUNNING}:
+            child.status, child.error_code, child.error_message = TaskStatus.NEEDS_USER, "PAUSED_BY_USER", "批量任务已停止"
     project = db.get(StoreProject, task.project_id)
     if project:
         project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
@@ -419,7 +461,7 @@ def pause_generation(task_id: str, db: Session = Depends(get_db)):
 def get_generated_asset(project_id: str, task_id: str, filename: str, db: Session = Depends(get_db)):
     require_project(db, project_id)
     task = db.get(WorkflowTask, task_id)
-    if task is None or task.project_id != project_id or task.task_type != "group_buying_image_generation":
+    if task is None or task.project_id != project_id or task.task_type not in {"group_buying_image_generation", "group_buying_image_generation_part"}:
         raise HTTPException(status_code=404, detail="生图任务不存在")
     allowed = {task.result.get("long_image"), *(task.result.get("slices") or []),
                task.result.get("clean_long_image"), *(task.result.get("clean_slices") or [])}

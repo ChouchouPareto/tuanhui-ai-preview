@@ -10,3 +10,8 @@ for (const [name, patch] of [["text",{text:"改成火锅"}],["assets",{assetIds:
   test(name + " changes invalidate old confirmation", () => assert.equal(canConfirmDraft({...reviewed,...patch},reviewed,true),false));
 }
 test("incomplete input never confirms", () => assert.equal(canConfirmDraft(reviewed,reviewed,false),false));
+test("output direction changes invalidate confirmation", () => assert.equal(canConfirmDraft({...reviewed,outputType:"three_panel"},reviewed,true),false));
+test("batch selection changes invalidate confirmation", () => {
+  const full={...reviewed,outputType:"full_plan",deliveryTypes:["voucher_main","five_panel","logo"]};
+  assert.equal(canConfirmDraft({...full,deliveryTypes:["logo"]},full,true),false);
+});

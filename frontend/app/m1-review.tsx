@@ -1,16 +1,17 @@
 "use client";
 
 import { Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { GenerationGallery } from "./generation-gallery";
+import { GenerationGallery, DeliveryResult } from "./generation-gallery";
+import { OUTPUT_NAMES } from "../lib/output-options";
 import { WorkflowTiming } from "./workflow-timing";
 import { createPortal } from "react-dom";
-import { apiRequest, jsonRequest } from "../lib/api-client";
+import { apiRequest, jsonRequest, AppError } from "../lib/api-client";
 import { canConfirmDraft, draftKey, DraftInput } from "../lib/intake-state";
 
 export type IntakeSeed = { text: string; assetIds: string[]; nonce: string };
-export type Snapshot = { render_mode?: string; messages?: { role: string; content: string }[]; schema_version?: number; text: string; facts: Record<string, string | string[]>; sources: Record<string, string>; assets: { id: string; name: string; usage: string }[]; show_price: boolean; show_store_name: boolean; style: string; provider: string; gaps: { field: string; question: string; kind: string }[]; ready: boolean; project_changes: string[] };
+export type Snapshot = { output_type?: string; delivery_types?: string[]; copy_edit?: string | null; render_mode?: string; messages?: { role: string; content: string }[]; schema_version?: number; text: string; facts: Record<string, string | string[]>; sources: Record<string, string>; assets: { id: string; name: string; usage: string }[]; show_price: boolean; show_store_name: boolean; style: string; provider: string; gaps: { field: string; question: string; kind: string }[]; ready: boolean; project_changes: string[] };
 type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; previous_task_id?: string; project_name?: string };
-type Task = { id: string; project_id?: string; creation_id?: string; status: string; progress: number; result: { long_image?: string; slices?: string[]; clean_long_image?: string; clean_slices?: string[] }; error?: { code: string; message: string } };
+type Task = { id: string; project_id?: string; creation_id?: string; status: string; progress: number; result: { deliverables?: DeliveryResult[]; output_type?: string; execution_kind?: string; long_image?: string; slices?: string[]; clean_long_image?: string; clean_slices?: string[] }; error?: { code: string; message: string } };
 export type IntakeController = { revise: () => Promise<void>; pause: () => Promise<void> };
 type Props = { autoGenerate?: () => boolean; onGenerationActive?: (active: boolean) => void; target: HTMLElement | null; controller: Ref<IntakeController>; projectId: string; seed: IntakeSeed | null; draft: DraftInput; prepare: () => Promise<DraftInput>; onRestore: (snapshot: Snapshot) => void; onReply: (field?: string) => void; onAssets: () => void; onBusy: (busy: boolean) => void };
 
@@ -19,6 +20,7 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
   const [task, setTask] = useState<Task | null>(null);
   const [previousTask, setPreviousTask] = useState<Task | null>(null);
   const [error, setError] = useState("");
+  const [connectionNotice, setConnectionNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const callbacks = useRef({ onRestore, onBusy, prepare });
   useEffect(() => { callbacks.current = { onRestore, onBusy, prepare }; }, [onRestore, onBusy, prepare]);
@@ -87,6 +89,7 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
       window.history.replaceState({}, "", `?project=${projectId}&creation=${current.creation_id}`);
       const input = initial ? { ...draft, text: initial.text, assetIds: initial.assetIds, chat: true, useAi: Boolean(initial.text.trim()) } : await callbacks.current.prepare();
       const body = JSON.stringify({ expected_revision: current.revision, text: input.text, asset_ids: input.assetIds, style: input.style, provider: input.provider,
+        output_type: input.outputType, delivery_types: input.outputType === "full_plan" ? input.deliveryTypes : undefined,
         input_mode: input.chat ? "chat" : input.replyField ? "reply" : "replace", reply_field: input.replyField ?? null,
         allow_illustration: true, use_ai: Boolean(input.useAi), accepted_understanding_policy: input.useAi ? "text-understanding-paid-v1" : null });
       if (saveRequest.current.body !== body) saveRequest.current = { body, key: crypto.randomUUID() };
@@ -94,7 +97,7 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
         method: "POST", body, headers: { "content-type": "application/json", "Idempotency-Key": saveRequest.current.key },
       });
       apply(next, true); setTask(null);
-      if (autoGenerate?.() && next.snapshot?.ready) await confirmSnapshot(next);
+      if (autoGenerate?.() && next.snapshot?.ready && (next.snapshot.delivery_types?.length || 1) === 1) await confirmSnapshot(next);
       setTimeout(() => onReply(), 0);
     } catch (e) { report(e); } finally { sending.current = false; setBusy(false); callbacks.current.onBusy(false); }
   }
@@ -116,14 +119,27 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
         const next = await apiRequest<Task>(`/tasks/${taskId}`);
         if (stopped) return;
         setTask(next);
+        setConnectionNotice("");
         if (["PENDING", "RUNNING"].includes(next.status)) timer = setTimeout(poll, 1500);
-      } catch (e) { if (!stopped) report(e); }
+      } catch (e) {
+        if (stopped) return;
+        const failure = e as AppError;
+        if (failure.code && !failure.retryable) { report(e); return; }
+        setConnectionNotice("连接暂时中断，正在恢复进度。不会重新提交生成任务。");
+        timer = setTimeout(poll, 3000);
+      }
     }
     void poll(); return () => { stopped = true; clearTimeout(timer); };
   }, [taskId]);
 
   const snapshot = review?.snapshot;
-  const reviewed = snapshot ? { text: snapshot.text, assetIds: snapshot.assets.map(a => a.id), style: snapshot.style, provider: snapshot.provider } : null;
+  const textOnly = task?.result.execution_kind === "text_only" || !!snapshot?.copy_edit;
+  const direction = task?.result.output_type || snapshot?.output_type || "five_panel";
+  const three = direction === "three_panel";
+  const single = !["five_panel", "three_panel", "full_plan"].includes(direction);
+  const batch = (snapshot?.delivery_types?.length || 1) > 1 || task?.result.execution_kind === "bundle";
+  const outputName = OUTPUT_NAMES[direction] || "作品";
+  const reviewed = snapshot ? { outputType:snapshot.output_type, deliveryTypes:snapshot.delivery_types, text: snapshot.text, assetIds: snapshot.assets.map(a => a.id), style: snapshot.style, provider: snapshot.provider } : null;
   const clean = (snapshot?.schema_version ?? 1) >= 2 && !!reviewed && draftKey(draft) === draftKey(reviewed);
   const allowed = clean && !!snapshot && !!reviewed && canConfirmDraft(draft, reviewed, snapshot.ready);
   async function confirmSnapshot(candidate: Review) {
@@ -131,7 +147,7 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
     if (latest.status === "CONFIRMED") { apply(latest); return; }
     if (latest.snapshot_hash !== candidate.snapshot_hash) { apply(latest, true); throw new Error("需求在其他页面更新了，请查看最新内容后再开始。"); }
     const result = await apiRequest<{ task_id: string }>(`${base}/${candidate.creation_id}/confirm`, {
-      ...jsonRequest("POST", { expected_revision: candidate.revision, snapshot_hash: candidate.snapshot_hash, accepted_budget_policy: "local-paid-generation-v1", materials_confirmed: true }),
+      ...jsonRequest("POST", { expected_revision: candidate.revision, snapshot_hash: candidate.snapshot_hash, accepted_budget_policy: "local-paid-generation-v1", materials_confirmed: true, approved_image_calls: candidate.snapshot?.delivery_types?.length || 1 }),
       headers: { "content-type": "application/json", "Idempotency-Key": `confirm-${candidate.creation_id}-${candidate.revision}` },
     });
     apply({ ...candidate, status: "CONFIRMED", task_id: result.task_id });
@@ -152,9 +168,10 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
   return createPortal(<section id="inline-confirmation" tabIndex={-1} className="inlineReview inlineFeedback" aria-label="本次生成摘要" aria-busy={busy}>
     <div className="chatMessages" aria-label="创作对话">{(snapshot?.messages ?? (snapshot?.text ? [{role:"user", content:snapshot.text}] : [])).map((message, index) => <div key={index} className={`chatMessage ${message.role}`}><span className="srOnly">{message.role === "user" ? "你" : "团绘"}</span><p>{message.content}</p></div>)}</div>
     {error && <div role="alert" tabIndex={-1} ref={errorRef} className="inlineReviewError">{error}<button type="button" disabled={busy} onClick={() => onReply()}>继续修改</button></div>}
+    {connectionNotice && <p role="status">{connectionNotice}</p>}
     {busy && <p role="status">我在看你的需求…</p>}
     <WorkflowTiming path={task ? `/projects/${projectId}/tasks/${task.id}/activity` : review?.creation_id ? `${base}/${review.creation_id}/activity` : null} active={busy || !!task && ["PENDING", "RUNNING"].includes(task.status)} />
-    {previousTask && task?.status !== "SUCCEEDED" && <details className="previousResult"><summary>查看上一版作品（已保留）</summary><GenerationGallery projectId={projectId} taskId={previousTask.id} longImage={previousTask.result.long_image} slices={previousTask.result.slices} cleanLongImage={previousTask.result.clean_long_image} cleanSlices={previousTask.result.clean_slices} /></details>}
+    {previousTask && task?.status !== "SUCCEEDED" && <details className="previousResult"><summary>查看上一版作品（已保留）</summary><GenerationGallery projectId={projectId} taskId={previousTask.id} longImage={previousTask.result.long_image} slices={previousTask.result.slices} cleanLongImage={previousTask.result.clean_long_image} cleanSlices={previousTask.result.clean_slices} deliverables={previousTask.result.deliverables} /></details>}
     {snapshot && review?.status !== "CONFIRMED" && <>
       {!clean && <p className="inlineFeedbackHint" role="status"></p>}
       {clean && !snapshot.messages?.length && snapshot.gaps.length > 0 && <div className="inlineMissing" role="status" aria-live="polite" id="creation-missing">
@@ -162,12 +179,12 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
         {snapshot.gaps.some(g => g.field === "assets") && <p>还需要一张真实菜品图来制作画面，门头照片仅用于识别。<button type="button" onClick={onAssets}>上传菜品图</button></p>}
       </div>}
       {allowed && !busy && <div className="inlineReady">
-        <p className="inlineReadySummary"><strong>本次生成</strong> {snapshot.render_mode === "illustration" ? "AI 示意五连图（非实拍）" : "首页五连图"} · {snapshot.show_store_name ? String(snapshot.facts.store_name) : "不展示店名"} · {String(snapshot.facts.hero_item || snapshot.facts.selling_points || snapshot.facts.positioning || "展示所选菜品")}{snapshot.show_price ? ` · ${snapshot.facts.hero_price}` : ""}</p>
-        <div className="inlineReadyActions"><span className="generationConsentNote">点击即确认素材使用权并同意本次生图费用。</span><button type="button" className="inlineGenerate" disabled={busy} onClick={confirm}>生成五图</button></div>
+        <p className="inlineReadySummary"><strong>{textOnly ? "本次修改" : "本次生成"}</strong> {textOnly ? "仅更新标题，保留画面" : snapshot.render_mode === "illustration" ? `AI 示意${outputName}（非实拍）` : `首页${outputName}`} · {snapshot.show_store_name ? String(snapshot.facts.store_name || "") : "不展示店名"}{snapshot.show_price ? ` · ${snapshot.facts.hero_price}` : ""}</p>
+        <div className="inlineReadyActions"><span className="generationConsentNote">{textOnly ? "不重新调用生图模型，原作品保留。" : batch ? `包含 ${snapshot.delivery_types?.map(t => OUTPUT_NAMES[t]).join("、")}；最多 ${snapshot.delivery_types?.length} 次生图调用，按实际用量计费。` : "点击即确认素材使用权并同意本次生图费用。"}</span><button type="button" className="inlineGenerate" disabled={busy} onClick={confirm}>{textOnly ? "更新文字" : batch ? "同意费用并生成以上作品" : `生成${outputName}`}</button></div>
       </div>}
     </>}
-    {snapshot?.messages?.length && snapshot.gaps.some(g => g.field === "assets") && <div className="chatAssetChoices"><button type="button" className="chatUpload" onClick={onAssets}>上传菜品照片</button><button type="button" className="chatUpload" onClick={() => onReply("illustration")}>先做 AI 示意图</button><small>示意图不代表真实菜品，导出保留标识。</small></div>}
-    {task && ["PENDING","RUNNING"].includes(task.status) && <div className="studioProgress" role="status"><h2>{task.status === "PENDING" ? "正在排队，尚未开始生图" : "正在生成整张长图"}</h2><p>{task.status === "PENDING" ? "后台接单后会自动开始，可以随时停止排队。" : "完成后会自动排版，再切成五张。"}</p><progress max={100} value={task.progress} /><p>已发送的模型请求可能仍会计费；停止后不再继续后续处理。</p></div>}
-    {review?.status === "CONFIRMED" && <div role="status"><p>{task?.error?.message || (task?.status === "SUCCEEDED" ? "作品已生成，可以下载。" : task?.status === "RUNNING" ? "正在生成，离开页面不会取消任务。" : task?.status === "NEEDS_USER" ? "已停止，需求和素材已保留。需要重新生成时请开始下一次创作。" : task?.status === "FAILED_FINAL" ? "这次生成没有完成，需求已保留，没有自动重试。" : "任务已保存，等待后台执行。")}</p>{task && <GenerationGallery projectId={projectId} taskId={task.id} longImage={task.result.long_image} slices={task.result.slices} cleanLongImage={task.result.clean_long_image} cleanSlices={task.result.clean_slices} />}<div className="studioResultActions"><a className="primaryButton" href={`/?project=${projectId}&compose=1`}>继续下一次创作</a><a href={`/projects?project=${projectId}`}>返回项目</a></div></div>}
+    {snapshot?.messages?.length && snapshot.gaps.some(g => g.field === "assets") && <div className="chatAssetChoices"><button type="button" className="chatUpload" onClick={onAssets}>上传菜品照片</button><button type="button" className="chatUpload" onClick={() => onReply("illustration")}>先做 AI 示意图</button><small>示意图不代表真实菜品，导出可选择水印版本。</small></div>}
+    {task && ["PENDING","RUNNING"].includes(task.status) && <div className="studioProgress" role="status"><h2>{textOnly ? "正在更新文字" : task.status === "PENDING" ? "正在排队，尚未开始生图" : batch ? "正在逐项生成作品" : single ? `正在生成${outputName}` : "正在生成整张长图"}</h2><p>{textOnly ? "保留原画面与构图，重新排字并导出。" : task.status === "PENDING" ? "后台接单后会自动开始，可以随时停止排队。" : batch ? "已完成的作品会逐项显示；停止后不再启动剩余项目。" : single ? "完成后按 4:3 导出。" : `完成后会自动排版，再切成${three ? "三" : "五"}张。`}</p><progress aria-label="任务进度" max={100} value={task.progress} /><p>{textOnly ? "本次不调用生图模型。" : "已发送的模型请求可能仍会计费；停止后不再继续后续处理。"}</p></div>}
+    {review?.status === "CONFIRMED" && <div role="status"><p>{task?.error?.message || (task?.status === "SUCCEEDED" ? "作品已生成，可以下载。" : task?.status === "RUNNING" ? "正在生成，离开页面不会取消任务。" : task?.status === "NEEDS_USER" ? "已停止，需求和素材已保留。需要重新生成时请开始下一次创作。" : task?.status === "FAILED_FINAL" ? "这次生成没有完成，需求已保留，没有自动重试。" : "任务已保存，等待后台执行。")}</p>{task && <GenerationGallery projectId={projectId} taskId={task.id} longImage={task.result.long_image} slices={task.result.slices} cleanLongImage={task.result.clean_long_image} cleanSlices={task.result.clean_slices} deliverables={task.result.deliverables} />}<div className="studioResultActions"><a className="primaryButton" href={`/?project=${projectId}&compose=1`}>继续下一次创作</a><a href={`/projects?project=${projectId}`}>返回项目</a></div></div>}
   </section>, target);
 }

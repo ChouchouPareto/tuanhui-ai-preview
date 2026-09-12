@@ -5,6 +5,7 @@ import { GenerationGallery } from "./generation-gallery";
 import { M1Review, IntakeSeed, IntakeController } from "./m1-review";
 import { ReferenceCategory, ReferenceThumbnail } from "./reference-thumbnail";
 import { StudioPhotoStack } from "./studio-photo-stack";
+import { OUTPUT_NAMES, DEFAULT_DELIVERIES } from "../lib/output-options";
 import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest, apiUrl, jsonRequest } from "../lib/api-client";
 import { Asset, Coverage, Facts, MenuProduct, StoreNameCandidate } from "../features/store-intake/types";
@@ -302,6 +303,8 @@ function QuickSelectMenu({ menuKey, label, value, options, openMenu, onOpenMenu,
 
 function QuickCreationHome({ mode, projectId, projectName, assets, coverage, generationTask, busy, message, messageTone, onSubmit, onOpenOneClick, onOpenProfessional, onOpenLibrary, intakeSeed, onPrepareAssets }: { mode: CreationView; projectId: string; projectName: string; assets: Asset[]; coverage: Coverage | null; generationTask: GenerationTask | null; designPlan: DesignPlan | null; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean>; onSubmitFacts: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: (style: string, model: string) => void; onGenerateExisting: () => void; onOpenOneClick: () => void; onOpenProfessional: () => void; onOpenLibrary: (tab: LibraryTab) => void; onPause: () => void; intakeSeed?: IntakeSeed | null; onPrepareAssets?: (items: PendingUpload[]) => Promise<Asset[]> }) {
   const [brief, setBrief] = useState("");
+  const [outputType, setOutputType] = useState("five_panel");
+  const [deliveryTypes, setDeliveryTypes] = useState<string[]>(DEFAULT_DELIVERIES);
   const [sessionStarted, setSessionStarted] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -412,12 +415,14 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
 
   const reviewPanel = mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
       autoGenerate={canAutoGenerate} onGenerationActive={handleGenerationActive} controller={intakeController} target={conversationTarget}
-      draft={{ text: [conversationText, brief].filter(Boolean).join("\n"), assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
+      draft={{ outputType, deliveryTypes, text: [conversationText, brief].filter(Boolean).join("\n"), assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
         style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string,string>)[style] ?? "appetite",
         provider: model.includes("豆包") ? "doubao" : "qwen" }}
       onReply={field => { if (field === "illustration") setBrief("使用AI示意图"); promptRef.current?.focus({ preventScroll: true }); }}
       onBusy={setReviewBusy}
       onRestore={snapshot => {
+        setOutputType(snapshot.output_type || "five_panel");
+        setDeliveryTypes(snapshot.delivery_types || DEFAULT_DELIVERIES);
         setConversationText(snapshot.text); setBrief("");
         setReplyField(null);
         setStyle(({ brand: "品牌质感", street: "烟火市井", minimal: "清爽简约" } as Record<string, string>)[snapshot.style] ?? QUICK_OPTIONS.style[0]);
@@ -431,7 +436,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         const newIds = all.filter(a => !assets.some(old => old.id === a.id)).map(a => a.id);
         pending.forEach(a => URL.revokeObjectURL(a.previewUrl)); setStoreItems([]); setDishItems([]);
         if (restoredSelection) setRestoredSelection(ids => [...(ids ?? []), ...newIds]);
-        return { text: brief, replyField: null, chat: true, useAi: Boolean(brief.trim()), assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
+        return { outputType, deliveryTypes, text: brief, replyField: null, chat: true, useAi: Boolean(brief.trim()), assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
           style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string, string>)[style] ?? "appetite",
           provider: model.includes("豆包") ? "doubao" : "qwen" };
       }} />;
@@ -439,7 +444,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   if (mode === "oneclick") return <section className={`oneclickStudio ${workbench ? "isWorking" : "isWelcome"}`} aria-label="一键生图工作区">
     <header className="studioHeader"><span title={projectId ? projectName : undefined}>{projectId ? projectName || "正在整理项目名称…" : "从一个想法，开始门店设计"}</span><div><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")}>素材与设置</button><a href={projectId ? `/?project=${projectId}&compose=1` : "/"}>新建创作</a></div></header>
     <div className="studioWelcome" hidden={workbench}>
-      <div className="creationTypeTabs" aria-label="创作模式"><button type="button" onClick={onOpenProfessional}>创作</button><button type="button" className="active" aria-current="page" onClick={onOpenOneClick}>一键生图</button><button type="button" disabled title="全案设计暂未开放">全案设计</button></div>
+      <div className="creationTypeTabs" aria-label="创作模式"><button type="button" onClick={onOpenProfessional}>创作</button><button type="button" className="active" aria-current="page" onClick={onOpenOneClick}>一键生图</button><button type="button" onClick={() => { setOutputType("full_plan"); setDeliveryTypes(DEFAULT_DELIVERIES); promptRef.current?.focus(); }}>全案设计</button></div>
       <h1>今天，想为门店做什么图？</h1><p>说一句想法，或放几张照片。设计交给团绘。</p>
     </div>
     <div ref={setConversationTarget} className="studioMessages" role="region" aria-label="创作消息" tabIndex={0} hidden={!workbench}>
@@ -456,14 +461,14 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         <StudioPhotoStack photos={[...selectedSaved.map(({asset}) => ({id: asset.id, src: apiUrl(asset.preview_path!)})), ...localAssets.map(item => ({id: item.id, src: item.previewUrl}))]} disabled={busy || reviewBusy} onAdd={() => dishInputRef.current?.click()}>{assetGroup("store")}{assetGroup("dish")}</StudioPhotoStack>
         <label className="studioInput"><span className="srOnly">创作需求</span><textarea ref={promptRef} value={brief} disabled={busy || reviewBusy} maxLength={8000} rows={3} placeholder={workbench ? "接着说，或者告诉我哪里想改。" : "想做什么图？说一句想法，或添加几张参考照片。"} onChange={e => { setBrief(e.target.value); setError(""); }} /></label>
       </div>
-      <footer className="studioToolbar"><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")} aria-expanded={!!assetDialog}>五连图 · {style === "智能匹配" ? "自动风格" : style}</button><button className="studioPrimary" type="submit" disabled={busy || reviewBusy}>{generationActive ? "停止生成" : busy || reviewBusy ? "正在理解…" : workbench ? "发送" : "开始生成"}</button></footer>
+      <footer className="studioToolbar"><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")} aria-expanded={!!assetDialog}>{OUTPUT_NAMES[outputType]} · {style === "智能匹配" ? "自动风格" : style}</button><button className="studioPrimary" type="submit" disabled={busy || reviewBusy}>{generationActive ? "停止生成" : busy || reviewBusy ? "正在理解…" : workbench ? "发送" : "开始生成"}</button></footer>
       <p className="studioPolicy">无实拍可做 AI 示意图；门头仅用于识别，不放进成品。</p>
       {(error || messageTone === "error") && <p className="studioHint" role="alert">{error || message}</p>}
     </form>
-    {assetDialog && <section className="studioSettings" aria-label="素材与设置"><header><h2>素材与设置</h2><button type="button" onClick={() => setAssetDialog(null)}>收起</button></header><p>门头、菜单仅用于识别；请选择真实菜品照片用于成品。</p><div className="studioSettingsActions"><button type="button" onClick={() => storeInputRef.current?.click()}>添加门头参考</button><button type="button" onClick={() => dishInputRef.current?.click()}>添加菜品照片</button><button type="button" onClick={() => onOpenLibrary("store")}>打开素材库</button></div><label>风格<select value={style} onChange={e => setStyle(e.target.value)}>{QUICK_OPTIONS.style.map(v => <option key={v}>{v}</option>)}</select></label><label>生图模型<select value={model} onChange={e => setModel(e.target.value)}>{QUICK_OPTIONS.model.map(v => <option key={v}>{v}</option>)}</select></label></section>}
+    {assetDialog && <section className="studioSettings" aria-label="素材与设置"><header><h2>素材与设置</h2><button type="button" onClick={() => setAssetDialog(null)}>收起</button></header><p>门头、菜单仅用于识别；请选择真实菜品照片用于成品。</p><div className="studioSettingsActions"><button type="button" onClick={() => storeInputRef.current?.click()}>添加门头参考</button><button type="button" onClick={() => dishInputRef.current?.click()}>添加菜品照片</button><button type="button" onClick={() => onOpenLibrary("store")}>打开素材库</button></div><label>图片类型<select value={outputType} onChange={e => { setOutputType(e.target.value); if(e.target.value === "full_plan") setDeliveryTypes(DEFAULT_DELIVERIES); }}>{Object.entries(OUTPUT_NAMES).map(([key,name]) => <option key={key} value={key}>{name}</option>)}</select></label>{outputType === "full_plan" && <fieldset><legend>全案包含的作品</legend>{Object.entries(OUTPUT_NAMES).filter(([key]) => key !== "full_plan").map(([key,name]) => <label key={key}><input type="checkbox" checked={deliveryTypes.includes(key)} onChange={e => setDeliveryTypes(items => e.target.checked ? [...items,key] : items.length > 1 ? items.filter(v => v !== key) : items)} />{name}</label>)}</fieldset>}<label>风格<select value={style} onChange={e => setStyle(e.target.value)}>{QUICK_OPTIONS.style.map(v => <option key={v}>{v}</option>)}</select></label><label>生图模型<select value={model} onChange={e => setModel(e.target.value)}>{QUICK_OPTIONS.model.map(v => <option key={v}>{v}</option>)}</select></label></section>}
     <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => chooseFiles(e,"store")} />
     <input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => chooseFiles(e,"dish")} />
-    <dialog ref={consentRef} className="studioConsent"><h2>开始前，先让你知道费用</h2><p>本地内测使用你配置的模型账号，文字理解和图片生成按服务商实际用量计费。当前还没有接入积分报价，无法提前给出准确金额。</p><p>同意后，本次需求清楚即可自动生成一套五连图；信息不足时会先问你。不自动重试失败任务。</p><p>请确认拥有上传素材的使用权。没有照片时使用带标识的 AI 示意图。</p><div><button type="button" onClick={() => consentRef.current?.close()}>先不生成</button><button className="studioPrimary" type="button" onClick={() => { authorized.current = true; consentRef.current?.close(); simpleFormRef.current?.requestSubmit(); }}>同意并开始</button></div></dialog>
+    <dialog ref={consentRef} className="studioConsent"><h2>开始前，先让你知道费用</h2><p>本地内测使用你配置的模型账号，文字理解和图片生成按服务商实际用量计费。当前还没有接入积分报价，无法提前给出准确金额。</p><p>同意后，本次需求清楚即可生成所选图片；全案或多张详情页会先列出项目及调用次数，确认后才生成。不自动重试失败任务。</p><p>请确认拥有上传素材的使用权。没有照片时使用带标识的 AI 示意图。</p><div><button type="button" onClick={() => consentRef.current?.close()}>先不生成</button><button className="studioPrimary" type="button" onClick={() => { authorized.current = true; consentRef.current?.close(); simpleFormRef.current?.requestSubmit(); }}>同意并开始</button></div></dialog>
     {reviewPanel}
   </section>;
 

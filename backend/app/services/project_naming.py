@@ -1,7 +1,7 @@
 import re
 
 DEFAULT_NAMES = {"未命名门店项目", "未命名项目", "新建创作", "店铺五图项目"}
-DIRECTIONS = {"five_panel": "五图", "logo": "Logo", "main_image": "主图", "full_plan": "全案"}
+DIRECTIONS = {"five_panel": "五图", "three_panel": "三图", "logo": "Logo", "main_image": "主图", "package_main": "套餐主图", "voucher_main": "代金券主图", "dish": "菜品图", "promotion": "宣传图", "store_decoration": "首页装修图", "detail": "详情页", "full_plan": "全案"}
 
 
 def five_image_name(store):

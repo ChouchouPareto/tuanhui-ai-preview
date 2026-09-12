@@ -1,4 +1,5 @@
 .generationGallery { width: 100%; min-width: 0; }
+.generationGallery.isSingle { max-width: 640px; }
 .generationExportOptions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; color: #555; }
 .generationExportOptions button { border: 0; border-radius: 10px; background: #ececf0; color: #333; min-height: 44px; padding: 0 14px; cursor: pointer; }
 .generationExportOptions button[aria-pressed="true"] { background: #222; color: #fff; }

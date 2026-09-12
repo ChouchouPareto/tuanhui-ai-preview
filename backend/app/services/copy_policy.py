@@ -2,7 +2,7 @@
 from pathlib import Path
 import re
 
-COPY_PE = Path(__file__).with_name("prompts") / "copywriting_v1.md"
+COPY_PE = Path(__file__).with_name("prompts") / "copywriting_v2.md"
 
 
 def validate_copy(copy):

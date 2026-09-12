@@ -97,6 +97,9 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
     if existing:
         return {"confirmation_id": existing.id, "task_id": existing.task_id, "state": existing.state}
     snapshot = item.snapshot
+    delivery_types = snapshot.get("delivery_types") or (["voucher_main", "five_panel", "logo"] if snapshot.get("output_type") == "full_plan" else [snapshot.get("output_type", "five_panel")])
+    if payload.approved_image_calls < len(delivery_types) and not snapshot.get("copy_edit"):
+        fail("BATCH_BUDGET_REQUIRED", f"本次包含 {len(delivery_types)} 项独立生成，请先确认这些项目的调用费用。尚未启动生图。")
     if not snapshot["ready"]:
         fail("INPUT_INCOMPLETE", "请先补充必要信息")
     if not payload.materials_confirmed:
@@ -114,14 +117,60 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
     if isinstance(facts.get("selling_points"), str):
         facts["selling_points"] = [facts["selling_points"]] if facts["selling_points"] else []
     facts.update(show_price=snapshot["show_price"], show_store_name=snapshot["show_store_name"])
-    plan_data = build_design_plan(facts, snapshot["style"], asset_count=sum(a["usage"] == "renderable" for a in snapshot["assets"]))
+    from app.services.creative_workflow import reserve_context
+    recent_ids = reserve_context(db, project_id)
+    try:
+        plan_data = build_design_plan(facts, snapshot["style"], output_type=delivery_types[0], asset_count=sum(a["usage"] == "renderable" for a in snapshot["assets"]),
+                                     excluded_ids=recent_ids, selection_key=creation_id, draft=snapshot.get("creative_draft"))
+    except ValueError as exc:
+        db.rollback()
+        fail("DESIGN_PLAN_INVALID", str(exc), 422)
     plan_data["render_mode"] = snapshot.get("render_mode", "real_assets")
     plan_data["brand_references"] = snapshot.get("design_references", {})
     plan_data["selected_asset_ids"] = [a["id"] for a in snapshot["assets"] if a["usage"] == "renderable"]
     plan_data["creation_id"] = creation_id
+    if plan_data["output_type"] == "logo":
+        plan_data["render_mode"], plan_data["selected_asset_ids"] = "illustration", []
+    if len(delivery_types) > 1:
+        from copy import deepcopy
+        deliverables = [deepcopy(plan_data)]
+        for index, direction in enumerate(delivery_types[1:], start=1):
+            try:
+                child = build_design_plan(facts, snapshot["style"], output_type=direction,
+                    asset_count=sum(a["usage"] == "renderable" for a in snapshot["assets"]),
+                    excluded_ids=recent_ids, selection_key=creation_id+direction+str(index), draft=snapshot.get("creative_draft"))
+            except ValueError as exc:
+                db.rollback()
+                fail("DESIGN_PLAN_INVALID", str(exc), 422)
+            child.update(render_mode="illustration" if direction == "logo" else snapshot.get("render_mode", "real_assets"),
+                         selected_asset_ids=[] if direction == "logo" else [a["id"] for a in snapshot["assets"] if a["usage"] == "renderable"],
+                         creation_id=creation_id, brand_references=snapshot.get("design_references", {}))
+            deliverables.append(child)
+        plan_data.update(output_type=snapshot.get("output_type", "full_plan"), deliverables=deliverables, execution={"kind":"bundle", "approved_image_calls":len(delivery_types)})
+    # An explicit text-only instruction reuses a successful parent's background,
+    # not its flattened text; missing background never silently causes a paid call.
+    if snapshot.get("copy_edit") and snapshot.get("parent_creation_id"):
+        from copy import deepcopy
+        from app.models import TaskStatus
+        from app.services.copy_policy import validate_copy
+        parent = db.scalar(select(CreationConfirmation).where(CreationConfirmation.creation_id == snapshot["parent_creation_id"]))
+        parent_task = db.get(WorkflowTask, parent.task_id) if parent else None
+        parent_plan = db.get(DesignPlan, parent.plan_id) if parent else None
+        if not parent_task or parent_task.status != TaskStatus.SUCCEEDED or not parent_plan or parent_plan.plan.get("template_version") != "region-master-v3":
+            db.rollback()
+            fail("EDIT_SOURCE_UNAVAILABLE", "这版暂时没有可复用的原画面。请先查看原作品；没有发起新的生图调用。")
+        plan_data = deepcopy(parent_plan.plan)
+        plan_data["copy"]["headline"] = snapshot["copy_edit"]
+        try:
+            validate_copy(plan_data["copy"])
+        except ValueError as exc:
+            db.rollback()
+            fail("COPY_INVALID", str(exc), 422)
+        plan_data["creation_id"] = creation_id
+        plan_data["execution"] = {"kind": "text_only", "source_task_id": parent_task.id}
     version = (db.scalar(select(func.max(DesignPlan.version)).where(DesignPlan.project_id == project_id)) or 0) + 1
     plan = DesignPlan(project_id=project_id, fact_version=0, version=version, status="CONFIRMED", plan=plan_data, confirmed_at=utc_now())
-    task = WorkflowTask(project_id=project_id, task_type="group_buying_image_generation", result={"creation_id": creation_id})
+    task = WorkflowTask(project_id=project_id, task_type="group_buying_image_generation", result={"creation_id": creation_id, "output_type": plan_data["output_type"], "execution_kind": plan_data.get("execution", {}).get("kind", "new_image")})
     db.add_all([plan, task])
     db.flush()
     record = CreationConfirmation(creation_id=creation_id, revision=creation.revision, request_key=idempotency_key,

@@ -4,6 +4,7 @@ import json
 from hashlib import sha256
 import time
 from pathlib import Path
+from contextvars import ContextVar
 
 import httpx
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -11,9 +12,25 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import DesignPlan, ModelCallRecord, ProjectStatus, SourceAsset, StoreProject, TaskStatus, WorkflowTask, utc_now
+from app.models import DesignPlan, ModelCallRecord, ModelUsageRecord, ProjectStatus, SourceAsset, StoreProject, TaskStatus, WorkflowTask, utc_now
 from app.services.master_layout import compose_master, eligible_dishes, save_manifest, add_export_watermark
 from app.services.design_plan import validate_design_plan
+
+REQUEST_CONTEXT = ContextVar("image_request_context", default=None)
+CALL_METRICS = ContextVar("image_call_metrics", default=None)
+
+
+def qwen_parameters():
+    context = REQUEST_CONTEXT.get() or {}
+    return {"prompt_extend": settings.qwen_image_prompt_extend,
+            "enable_thinking": settings.qwen_image_prompt_extend and settings.qwen_image_enable_thinking,
+            "n": 1, "size": context.get("size", "2000*300"),
+            "negative_prompt": "文字，乱码，数字，水印，变形菜品，重复餐具", "watermark": False}
+
+
+def request_size(plan):
+    width, height = map(int, plan["canvas"]["recommended_size"].split("x"))
+    return "1024*768" if width == 800 else f"{width//2}*{height//2}"
 
 
 class ImageGenerationError(RuntimeError):
@@ -38,7 +55,8 @@ def build_visual_prompt(plan: dict) -> str:
         instructions = (Path(__file__).with_name("prompts") / "generation_v3.md").read_text(encoding="utf-8")
         # The template is trusted control data; store facts are untrusted task data.
         instructions += "\n画布比例：" + plan["canvas"]["ratio"]
-        instructions += "\n已选择构图（必须遵守）：" + json.dumps(plan["layout"], ensure_ascii=False)
+        from app.services.creative_workflow import compact_layout
+        instructions += "\n已选择构图（必须遵守）：" + json.dumps(compact_layout(plan["layout"]), ensure_ascii=False, separators=(",", ":"))
         instructions += "\n任务资料：" + json.dumps({
             "style": plan["style"],
             "text_color": PALETTES.get(plan["style"]["key"], PALETTES["appetite"])[1],
@@ -85,17 +103,23 @@ def call_qwen(prompt: str, references: list[SourceAsset]) -> bytes:
         raise ImageGenerationError("QWEN_NOT_CONFIGURED", "未配置百炼 DASHSCOPE_API_KEY")
     content = [{"image": _reference_data(asset)} for asset in references[:3]]
     content.append({"text": prompt})
+    started = time.monotonic()
     response = httpx.post(
         settings.qwen_image_base_url,
         headers={"Authorization": f"Bearer {settings.dashscope_api_key}", "Content-Type": "application/json"},
-        json={"model": settings.qwen_image_model, "input": {"messages": [{"role": "user", "content": content}]}, "parameters": {"prompt_extend": True, "enable_thinking": True, "n": 1, "size": "2000*300", "negative_prompt": "文字，乱码，数字，水印，变形菜品，重复餐具", "watermark": False}},
+        json={"model": settings.qwen_image_model, "input": {"messages": [{"role": "user", "content": content}]}, "parameters": qwen_parameters()},
         timeout=max(settings.model_timeout_seconds, 180),
     )
     if response.status_code >= 400:
         raise ImageGenerationError("QWEN_HTTP_ERROR", f"千问生图失败（HTTP {response.status_code}）")
-    image_url = _extract_qwen_image(response.json())
+    payload = response.json()
+    metrics = {"usage": payload.get("usage") or {}, "request_ms":max(1,int((time.monotonic()-started)*1000)), "options":qwen_parameters()}
+    CALL_METRICS.set(metrics)
+    image_url = _extract_qwen_image(payload)
+    download_started = time.monotonic()
     image_response = httpx.get(image_url, timeout=90)
     image_response.raise_for_status()
+    metrics["download_ms"] = max(1,int((time.monotonic()-download_started)*1000))
     return image_response.content
 
 
@@ -106,15 +130,21 @@ def call_doubao(prompt: str, references: list[SourceAsset]) -> bytes:
     body = {"model": settings.doubao_image_model, "prompt": prompt, "size": "2K", "response_format": "b64_json", "watermark": False}
     if images:
         body["image"] = images
+    started = time.monotonic()
     response = httpx.post(settings.ark_image_base_url, headers={"Authorization": f"Bearer {settings.ark_api_key}", "Content-Type": "application/json"}, json=body, timeout=max(settings.model_timeout_seconds, 180))
     if response.status_code >= 400:
         raise ImageGenerationError("DOUBAO_HTTP_ERROR", f"豆包生图失败（HTTP {response.status_code}）")
     try:
-        item = response.json()["data"][0]
+        payload = response.json()
+        metrics = {"usage": payload.get("usage") or {}, "request_ms": max(1, int((time.monotonic()-started)*1000)), "options": {"size": body["size"], "watermark": False}}
+        CALL_METRICS.set(metrics)
+        item = payload["data"][0]
         if item.get("b64_json"):
             return base64.b64decode(item["b64_json"])
+        download_started = time.monotonic()
         image_response = httpx.get(item["url"], timeout=90)
         image_response.raise_for_status()
+        metrics["download_ms"] = max(1, int((time.monotonic()-download_started)*1000))
         return image_response.content
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise ImageGenerationError("DOUBAO_BAD_OUTPUT", "豆包未返回图片") from exc
@@ -135,6 +165,7 @@ def _font(size: int, bold: bool = False):
 def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()) -> dict:
     validate_design_plan(plan)
     output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "model-response.bin").write_bytes(image_bytes)
     with Image.open(io.BytesIO(image_bytes)) as source:
         source.convert("RGB").save(output_dir / "model-visual.png")
         if plan.get("template_version") == "region-master-v3":
@@ -148,7 +179,9 @@ def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()
                            "semantic_visual_review": "not_automated"},
         "model_input_assets": [], "note": "Real photos composed locally; no semantic quality score claimed"
         , "prompt_sha256": sha256(build_visual_prompt(plan).encode()).hexdigest(),
-        "layout_id": plan.get("layout", {}).get("id")
+        "layout_id": plan.get("layout", {}).get("id"), "workflow": plan.get("workflow"),
+        "execution": plan.get("execution"), "category": plan.get("category"),
+        "prompt_characters": len(build_visual_prompt(plan)), "token_count": "use_provider_usage_not_character_estimate"
     }, ensure_ascii=False, indent=2), encoding="utf-8")
     clean = canvas.copy()
     count = plan["canvas"]["slice_count"]
@@ -168,7 +201,7 @@ def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()
             name = f"{index + 1:02d}-clean.png"
             clean.crop((index*800, 0, (index+1)*800, 600)).save(output_dir / name, format="PNG", optimize=True)
             clean_slices.append(name)
-    return {"long_image": long_path.name, "slices": slices, "width": canvas.width, "height": canvas.height,
+    return {"output_type": plan.get("output_type", "five_panel"), "execution_kind": plan.get("execution", {}).get("kind", "new_image"), "long_image": long_path.name, "slices": slices, "width": canvas.width, "height": canvas.height,
             **({"clean_long_image": "long-clean.png", "clean_slices": clean_slices} if clean_slices else {})}
 
 
@@ -177,11 +210,13 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
     from app.models import utc_now
     from datetime import timezone
     db.refresh(task)
-    if task.status == TaskStatus.NEEDS_USER:
+    if task.status != TaskStatus.PENDING:
         return
     creation_id = plan.plan.get("creation_id")
     # Separate comparable workloads. This is a total pipeline cohort, not a model latency.
     model = settings.qwen_image_model if provider == "qwen" else settings.doubao_image_model
+    if plan.plan.get("execution", {}).get("kind") == "text_only":
+        model = "local-program-typography"
     cohort = ":".join((model, plan.plan.get("template_version", "legacy"), plan.plan.get("render_mode", "real_assets"), str(plan.plan.get("output_type", "five_panel"))))
     queued_ms = max(1, int((utc_now().replace(tzinfo=timezone.utc) - task.created_at.replace(tzinfo=timezone.utc)).total_seconds()*1000))
     emit(db, project.id, task.id, "queue", "completed", creation_id=creation_id, duration_ms=queued_ms)
@@ -201,10 +236,75 @@ def _run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan
     db.refresh(task)
     if task.status == TaskStatus.NEEDS_USER:
         return
+    if plan.plan.get("execution", {}).get("kind") == "bundle":
+        return _run_bundle(db, project, task, plan, provider)
     task.status = TaskStatus.RUNNING
     task.progress = 8
     project.status = ProjectStatus.GENERATING
     db.commit()
+    return _run_single(db, project, task, plan, provider, allow_fallback)
+
+
+def _run_bundle(db, project, task, plan, provider):
+    """Explicitly authorized sequential outputs; each has an immutable child task.
+
+    Never rerun completed children or resume interrupted paid calls automatically.
+    """
+    from types import SimpleNamespace
+    from app.services.output_contract import NAMES
+    deliveries = plan.plan.get("deliverables", [])
+    if not deliveries or len(deliveries) > plan.plan["execution"].get("approved_image_calls", 0):
+        task.status, task.error_code = TaskStatus.FAILED_FINAL, "BATCH_BUDGET_REQUIRED"
+        task.error_message = "批量调用数量未获授权，未生成。"
+        db.commit(); return
+    # Validate every output locally before the first paid request.
+    try:
+        from app.services.text_guard import detector_binary
+        detector_binary()
+        assets = db.scalars(select(SourceAsset).where(SourceAsset.project_id == project.id)).all()
+        for child in deliveries:
+            validate_design_plan(child)
+            selected = [a for a in assets if a.id in child.get("selected_asset_ids", [])]
+            compose_master(Image.new("RGB", (800,600)), child, selected, _font)
+    except (OSError, ValueError) as exc:
+        task.status, task.error_code = TaskStatus.FAILED_FINAL, "MASTER_PREFLIGHT_FAILED"
+        task.error_message = f"生成前检查未通过：{exc}"
+        db.commit(); return
+    task.status, task.progress = TaskStatus.RUNNING, 1
+    task.result = {"execution_kind":"bundle", "output_type":plan.plan["output_type"], "deliverables":[]}
+    db.commit()
+    for index, child in enumerate(deliveries):
+        db.refresh(task)
+        if task.status == TaskStatus.NEEDS_USER:
+            return
+        subtask = WorkflowTask(project_id=project.id, task_type="group_buying_image_generation_part",
+            result={"parent_task_id":task.id, "output_type":child["output_type"]})
+        db.add(subtask); db.flush()
+        entries = list(task.result["deliverables"])
+        entries.append({"task_id":subtask.id,"output_type":child["output_type"],"label":NAMES[child["output_type"]],"status":"PENDING"})
+        task.result = {**task.result,"deliverables":entries}
+        db.commit()
+        run_generation(db, project, subtask, SimpleNamespace(id=plan.id, plan=child), provider, False)
+        db.refresh(task); db.refresh(subtask)
+        entries[-1].update(subtask.result, status=subtask.status.value)
+        task.result = {**task.result,"deliverables":entries}
+        task.progress = round((index+1)/len(deliveries)*100)
+        if task.status == TaskStatus.NEEDS_USER:
+            db.commit(); return
+        if subtask.status != TaskStatus.SUCCEEDED:
+            task.status, task.error_code = TaskStatus.FAILED_FINAL, "BATCH_PART_FAILED"
+            task.error_message = f"{NAMES[child['output_type']]}未完成。已完成作品保留，剩余项目未调用，没有自动重试。"
+            project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
+            db.commit(); return
+        project.status = ProjectStatus.GENERATING
+        db.commit()
+    task.status, task.progress = TaskStatus.SUCCEEDED, 100
+    project.status = ProjectStatus.GENERATED
+    db.commit()
+
+
+def _run_single(db, project, task, plan, provider, allow_fallback):
+    from app.services.telemetry import emit
     assets = db.scalars(select(SourceAsset).where(SourceAsset.project_id == project.id).order_by(SourceAsset.is_hero.desc(), SourceAsset.priority, SourceAsset.created_at)).all()
     if "selected_asset_ids" in plan.plan:
         assets = [a for a in assets if a.id in plan.plan["selected_asset_ids"]]
@@ -215,6 +315,30 @@ def _run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan
         task.error_message = "请上传并归类至少一张真实菜品图。门头和菜单仅供识别，不用于生成画面。"
         project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
         db.commit()
+        return
+    if plan.plan.get("execution", {}).get("kind") == "text_only":
+        source_task = db.get(WorkflowTask, plan.plan["execution"]["source_task_id"])
+        if not source_task or source_task.project_id != project.id or source_task.status != TaskStatus.SUCCEEDED:
+            task.status = TaskStatus.FAILED_FINAL
+            task.error_code = "EDIT_SOURCE_UNAVAILABLE"
+            task.error_message = "原画面不可用，未调用生图模型。"
+            db.commit()
+            return
+        source = settings.generated_dir / project.id / source_task.id / "model-visual.png"
+        started = time.monotonic()
+        emit(db, project.id, task.id, "layout_export", "started", creation_id=plan.plan.get("creation_id"))
+        try:
+            result = render_and_slice(source.read_bytes(), plan.plan, settings.generated_dir / project.id / task.id, dishes)
+            task.result = {**result, "provider": "local", "model": "program-typography", "design_plan_id": plan.id,
+                           "source_task_id": source_task.id, "image_model_calls": 0}
+            task.status, task.progress = TaskStatus.SUCCEEDED, 100
+            project.status = ProjectStatus.GENERATED
+        except (OSError, ValueError) as exc:
+            task.status = TaskStatus.FAILED_FINAL
+            task.error_code, task.error_message = "LOCAL_EDIT_FAILED", f"本次文字修改未完成，未重新生图：{exc}"
+        db.commit()
+        emit(db, project.id, task.id, "layout_export", "completed" if task.status == TaskStatus.SUCCEEDED else "failed",
+             creation_id=plan.plan.get("creation_id"), duration_ms=max(1, int((time.monotonic()-started)*1000)), error_code=task.error_code)
         return
     try:
         # Validate local assets and text before any paid model request.
@@ -254,6 +378,8 @@ def _run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan
             emit(db, project.id, task.id, stage, state, creation_id=plan.plan.get("creation_id"), model=record.model,
                  duration_ms=None if state == "started" else max(1, int((time.monotonic()-phase_started)*1000)), error_code=error_code)
         phase_event("started")
+        context_token = REQUEST_CONTEXT.set({"size":request_size(plan.plan)})
+        metrics_token = CALL_METRICS.set(None)
         try:
             raw = call_qwen(prompt, references) if candidate == "qwen" else call_doubao(prompt, references)
             model_duration = max(1, int((time.monotonic()-phase_started)*1000))
@@ -305,6 +431,27 @@ def _run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan
             record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
             errors.append(f"{candidate}:{exc}")
             db.commit()
+            if model_duration is not None:
+                # The image request succeeded: a local QA/layout failure must not
+                # trigger another paid provider call or be labelled an unknown bill.
+                task.status = TaskStatus.FAILED_FINAL
+                task.error_code = "POSTPROCESS_FAILED"
+                task.error_message = f"模型内容已返回，但质量检查或排版未通过：{exc}。返回内容已保留，没有自动重试。"
+                project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
+                db.commit()
+                return
+        finally:
+            try:
+                metrics = CALL_METRICS.get()
+                if metrics is not None:
+                    # Metering excludes images and raw prompts.
+                    db.add(ModelUsageRecord(call_id=record.id, usage=metrics["usage"], request_ms=metrics.get("request_ms"),
+                        download_ms=metrics.get("download_ms"), prompt_characters=len(prompt),
+                        prompt_sha256=sha256(prompt.encode()).hexdigest(), request_options=metrics.get("options", {})))
+                    db.commit()
+            finally:
+                REQUEST_CONTEXT.reset(context_token)
+                CALL_METRICS.reset(metrics_token)
     task.status = TaskStatus.FAILED_FINAL
     task.error_code = "ALL_PROVIDERS_FAILED"
     task.error_message = "；".join(errors)

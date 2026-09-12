@@ -40,10 +40,12 @@ def fitted_text(draw, text, box, font_factory, color, size=60):
                 line += character
         lines.append(line)
         spacing = round(point_size * 1.4)
-        if len(lines) * spacing <= height:
-            for index, value in enumerate(lines):
-                draw.text((x, y + index * spacing), value, font=font, fill=color)
-            return
+        bounds = [draw.textbbox((0,0), value, font=font) for value in lines]
+        if all(b[2]-b[0] <= width for b in bounds) and (len(lines)-1)*spacing + max(b[3]-b[1] for b in bounds) <= height:
+            for index, (value, bound) in enumerate(zip(lines, bounds)):
+                # Align actual glyph pixels, not font baseline (prevents clipping/overlap).
+                draw.text((x-bound[0], y + index * spacing-bound[1]), value, font=font, fill=color)
+            return {"text":text,"box":list(box),"font_size":point_size,"lines":lines}
     raise ValueError("文案超出母版容量，请缩短文案后重新确认；未截断文字")
 
 
@@ -113,10 +115,24 @@ def compose_regions(background, plan, assets, font_factory):
                                          (round(w*width), round(h*height)), Image.Resampling.LANCZOS)
             canvas.paste(photo, (round(x*width+(w*width-photo.width)/2),
                                 round(y*height+(h*height-photo.height)/2)), photo)
-    draw = ImageDraw.Draw(canvas)
     area = next(r["box"] for r in plan["layout"]["regions"] if r["role"] == "copy")
     x, y, w, h = area[0]*width, area[1]*height, area[2]*width, area[3]*height
-    entries = [(key, plan["copy"].get(key)) for key in ("store_name", "headline", "subheadline", "price") if plan["copy"].get(key)]
+    # A soft local veil improves readability without a fixed red badge/black footer.
+    # Its color follows the selected palette; never alters the whole image.
+    from PIL import ImageFilter, ImageColor
+    veil = Image.new("RGBA", canvas.size)
+    mask = Image.new("L", canvas.size)
+    ImageDraw.Draw(mask).rectangle((x-12,y-12,x+w+12,y+h+12),fill=160)
+    mask = mask.filter(ImageFilter.GaussianBlur(18))
+    veil.paste(ImageColor.getrgb(base)+(255,), (0,0,width,height))
+    veil.putalpha(mask)
+    canvas = Image.alpha_composite(canvas.convert("RGBA"),veil).convert("RGB")
+    draw = ImageDraw.Draw(canvas)
+    entries, seen = [], set()
+    for key in ("store_name", "headline", "subheadline", "price"):
+        value = str(plan["copy"].get(key) or "").strip()
+        if value and value not in seen:
+            entries.append((key,value)); seen.add(value)
     # Only actual information consumes space; no mandatory text per export slice.
     weights = {"store_name": 1.2, "headline": 2, "subheadline": 1, "price": 1.3}
     total = sum(weights[key] for key, _ in entries)

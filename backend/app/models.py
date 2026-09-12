@@ -191,6 +191,20 @@ class IntakeRunLock(Base):
     task_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
+class ModelUsageRecord(Base):
+    """Provider metering, separate from text tokens; never invent missing counts."""
+    __tablename__ = "model_usage_records"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    call_id: Mapped[str] = mapped_column(ForeignKey("model_call_records.id"), unique=True)
+    usage: Mapped[dict] = mapped_column(JSON, default=dict)
+    request_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    download_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prompt_characters: Mapped[int] = mapped_column(Integer)
+    prompt_sha256: Mapped[str] = mapped_column(String(64))
+    request_options: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class WorkflowEvent(Base):
     """Append-only stage telemetry. Never stores raw prompts, photos or secrets."""
     __tablename__ = "workflow_events"

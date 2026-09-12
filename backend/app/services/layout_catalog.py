@@ -2,7 +2,7 @@
 from copy import deepcopy
 from hashlib import sha256
 
-CATALOG_VERSION = "layout-regions-v1"
+CATALOG_VERSION = "layout-regions-v2"
 OUTPUT_SPECS = {
     "five_panel": {"ratio": "20:3", "size": [4000, 600], "slices": 5},
     "three_panel": {"ratio": "12:3", "size": [2400, 600], "slices": 3},
@@ -11,8 +11,8 @@ OUTPUT_SPECS = {
     "voucher_main": {"ratio": "4:3", "size": [800, 600], "slices": 1, "safe_area": [.125, 0, .75, 1]},
     "dish": {"ratio": "4:3", "size": [800, 600], "slices": 1},
     "promotion": {"ratio": "4:3", "size": [800, 600], "slices": 1},
-    "store_decoration": {"configured": False},
-    "detail": {"configured": False},
+    "store_decoration": {"ratio": "4:3", "size": [800, 600], "slices": 1},
+    "detail": {"ratio": "4:3", "size": [800, 600], "slices": 1},
 }
 FULL_PLAN_DEFAULTS = ["voucher_main", "five_panel", "logo"]
 
@@ -50,20 +50,50 @@ LAYOUTS = [
 ]
 
 
-def select_layout(facts, output_type="five_panel", asset_count=0):
-    candidates = [x for x in LAYOUTS if output_type in x["outputs"]]
+# Keep the first twelve geometries immutable for old confirmed snapshots.
+EXTENDED_LAYOUTS = [
+    layout("L13", "左侧小标题右侧宽景", (.03,.26,.19,.55), [(.27,.05,.70,.90)], (.03,.05,.10,.1)),
+    layout("L14", "右侧小标题左侧宽景", (.78,.26,.19,.55), [(.03,.05,.70,.90)], (.84,.05,.10,.1)),
+    layout("L15", "左侧宽标题右侧聚焦", (.03,.20,.38,.64), [(.47,.08,.49,.84)], (.04,.04,.10,.1)),
+    layout("L16", "右侧宽标题左侧聚焦", (.59,.20,.38,.64), [(.04,.08,.49,.84)], (.86,.04,.10,.1)),
+    layout("L17", "左侧紧凑标题右侧低位主体", (.05,.11,.27,.55), [(.39,.20,.56,.76)], (.06,.73,.10,.1)),
+    layout("L18", "右侧紧凑标题左侧低位主体", (.68,.11,.27,.55), [(.05,.20,.56,.76)], (.83,.73,.10,.1)),
+]
+ALL_LAYOUTS = LAYOUTS + EXTENDED_LAYOUTS
+
+
+def catalog_entry(value):
+    result = deepcopy(value)
+    result.update(catalog_version=CATALOG_VERSION, schema_version=2,
+                  review_status="pending_owner_review", release_channel="internal_preview",
+                  coordinate_system="normalized_xywh_top_left", reference_policy="review_only_never_model_input",
+                  categories=["food", "beauty", "leisure", "shopping", "general"],
+                  typography={"renderer": "program", "hierarchy": ["brand", "headline", "support", "price"],
+                              "overflow": "fit_then_fail", "duplicate_text": "remove_exact_duplicate"})
+    for index, item in enumerate(result["regions"]):
+        item.update(id=f"{result['id']}_{index+1}", z_index=10 if item["role"] == "copy" else 1,
+                    render_by="program" if item["role"] == "copy" else "visual_executor",
+                    flexibility="区域内变化；不画边框、不遮挡文字")
+    return result
+
+
+def select_layout(facts, output_type="five_panel", asset_count=0, *, excluded_ids=(), selection_key=""):
+    excluded = set(excluded_ids)
+    candidates = [x for x in ALL_LAYOUTS if output_type in x["outputs"] and x["id"] not in excluded]
     if asset_count:
         candidates = [x for x in candidates if sum(r["role"] == "visual" for r in x["regions"]) <= asset_count]
     if not candidates:
-        raise ValueError("该输出类型尚无已审核构图模板，不能自由生成")
-    seed = str(facts.get("store_name") or facts.get("hero_item") or "default")
-    picked = deepcopy(candidates[int(sha256(seed.encode()).hexdigest()[:8], 16) % len(candidates)])
-    picked["catalog_version"] = CATALOG_VERSION
-    picked["selection"] = "deterministic_catalog_match"
+        raise ValueError("当前没有符合素材数量且避开近五次使用记录的构图模板；不会重复或自由编造模板")
+    seed = str(selection_key or facts.get("store_name") or facts.get("hero_item") or "default")
+    picked = catalog_entry(candidates[int(sha256(seed.encode()).hexdigest()[:8], 16) % len(candidates)])
+    picked["selection"] = "project_recent_five_excluded"
+    picked["excluded_ids"] = list(excluded_ids)
     return picked
 
 
 def validate_layout(value):
-    canonical = next((x for x in LAYOUTS if x["id"] == value.get("id")), None)
+    canonical = next((x for x in ALL_LAYOUTS if x["id"] == value.get("id")), None)
+    if canonical and value.get("catalog_version") == CATALOG_VERSION:
+        canonical = catalog_entry(canonical)
     if canonical is None or canonical["regions"] != value.get("regions") or canonical["rules"] != value.get("rules"):
         raise ValueError("构图必须来自已登记模板库，不得自由替换区域约束")

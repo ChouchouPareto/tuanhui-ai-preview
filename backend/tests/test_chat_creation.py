@@ -46,7 +46,7 @@ def test_illustration_decline_and_unknown_topic_do_not_generate(client):
     assert not two["snapshot"]["ready"]
 
 
-def test_ai_receives_user_history_not_generated_assistant_text(client, monkeypatch):
+def test_ai_receives_latest_message_and_loads_structured_context(client, monkeypatch):
     from app.services import intake_understanding
     _, asset, base = setup_creation(client)
     submit(client, base, asset, text="店名：山城", input_mode="chat")
@@ -57,7 +57,7 @@ def test_ai_receives_user_history_not_generated_assistant_text(client, monkeypat
     monkeypatch.setattr(intake_understanding, "understand", understand)
     result = submit(client, base, asset, text="聚餐", input_mode="chat", expected_revision=1, use_ai=True, accepted_understanding_policy="text-understanding-paid-v1")
     assert result.status_code == 200
-    assert seen == ["店名：山城\n聚餐"]
+    assert seen == ["聚餐"]
 
 
 def test_illustration_slices_are_exact_and_have_label(tmp_path):

@@ -37,6 +37,8 @@ class IntakeInput(BaseModel):
     accepted_understanding_policy: Literal["text-understanding-paid-v1"] | None = None
     input_mode: Literal["merge", "replace", "reply", "chat"] = "merge"
     reply_field: Literal["store_name", "hero_item", "positioning", "selling_points", "hero_price"] | None = None
+    output_type: Literal["five_panel", "three_panel", "logo", "package_main", "voucher_main", "dish", "promotion", "store_decoration", "detail", "full_plan"] | None = None
+    delivery_types: list[Literal["five_panel", "three_panel", "logo", "package_main", "voucher_main", "dish", "promotion", "store_decoration", "detail"]] | None = Field(default=None, min_length=1, max_length=9)
 
 
 class ConfirmInput(BaseModel):
@@ -44,6 +46,7 @@ class ConfirmInput(BaseModel):
     snapshot_hash: str = Field(min_length=64, max_length=64)
     accepted_budget_policy: Literal["local-paid-generation-v1"]
     materials_confirmed: bool
+    approved_image_calls: int = Field(default=1, ge=0, le=9)
 
 
 def fail(code, message, status=409):
@@ -156,6 +159,16 @@ def compile_intake(db, creation, payload):
         fail("INVALID_ANSWERS", "补充字段不支持或内容过长", 422)
     old = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
     message = payload.text.strip()
+    output_type = payload.output_type or (old.snapshot.get("output_type", "five_panel") if old else "five_panel")
+    from app.services.output_contract import detect_output, NAMES
+    output_type = detect_output(message, output_type)
+    delivery_types = [output_type]
+    if output_type == "full_plan":
+        delivery_types = payload.delivery_types or (old.snapshot.get("delivery_types") if old and old.snapshot.get("output_type") == "full_plan" else None) or ["voucher_main", "five_panel", "logo"]
+    elif output_type == "detail":
+        count_match = re.search(r"(?:详情页\s*(?:做|生成)?\s*([1-9])\s*张)|(?:([1-9])\s*张\s*详情页)", message)
+        count = int(count_match[1] or count_match[2]) if count_match else (len(old.snapshot.get("delivery_types", ["detail"])) if old and old.snapshot.get("output_type") == "detail" else 1)
+        delivery_types = ["detail"] * count
     chat = payload.input_mode == "chat"
     if chat:
         previous_text = old.snapshot["text"] if old else ""
@@ -172,15 +185,23 @@ def compile_intake(db, creation, payload):
         sources.update(old.snapshot["sources"])
     extracted = parse_text(payload.text)
     uncertain = []
-    if payload.use_ai:
+    from app.services.creative_workflow import parse_copy_edit
+    copy_edit = parse_copy_edit(message) if old and old.snapshot.get("parent_creation_id") and output_type != "full_plan" and len(delivery_types) == 1 else None
+    if copy_edit and (manifest != old.snapshot.get("assets") or payload.style != old.snapshot.get("style") or output_type != old.snapshot.get("output_type", "five_panel")):
+        copy_edit = None  # A changed asset/style is not a text-only request.
+    creative_draft = None
+    style_hint = None
+    if payload.use_ai and not copy_edit:
         from app.services.intake_understanding import understand
         from app.services.model_gateway import ModelGatewayError
         try:
-            understood = understand(db, creation, payload.text, digest(payload.model_dump()))
+            understood = understand(db, creation, message if chat else payload.text, digest(payload.model_dump()))
         except ModelGatewayError as exc:
             fail(exc.code, exc.safe_message)
         extracted.update(understood["facts"])
         uncertain = understood["uncertain_fields"]
+        creative_draft = understood.get("creative_draft")
+        style_hint = understood.get("style_hint")
         for key in uncertain:
             extracted.pop(key, None)
             facts.pop(key, None)
@@ -219,10 +240,12 @@ def compile_intake(db, creation, payload):
         facts["hero_price"] = ""
     design_style = payload.style
     if chat:
-        for clause in re.split(r"[\n；;，,。！!]", text):
+        for clause in re.split(r"[\n；;，,。！!]", message):
             match = re.fullmatch(r"(?:请|想要|要)?(?:风格)?(?:换成|改成)?(温馨|烟火|简约|清爽|高级|品牌质感|有食欲)(?:一点|一些|风格)?", clause.strip())
             if match:
                 design_style = {"温馨": "street", "烟火": "street", "简约": "minimal", "清爽": "minimal", "高级": "brand", "品牌质感": "brand", "有食欲": "appetite"}[match[1]]
+    if style_hint in {"minimal", "street", "brand", "appetite"}:
+        design_style = style_hint
     # Explicit UI policy: absent usable photos may use a labelled illustration.
     # Older clients retain their original real-photo requirement.
     illustration = payload.allow_illustration and creation.mode == "oneclick" and not any(a["usage"] == "renderable" for a in manifest)
@@ -251,7 +274,11 @@ def compile_intake(db, creation, payload):
     if chat:
         messages.append({"role": "user", "content": message or "使用这些素材做五图"})
         messages.append({"role": "assistant", "content": conversation_reply(gaps, facts)})
-    return {"schema_version": 2, "parent_creation_id": old.snapshot.get("parent_creation_id") if old else None, "text": text, "messages": messages, "render_mode": "illustration" if illustration else "real_assets", "facts": facts, "sources": sources,
+    if chat and copy_edit:
+        messages[-1]["content"] = "好，只修改标题，保留这版画面和构图，不重新调用生图模型。"
+    if chat and output_type != "five_panel":
+        messages[-1]["content"] = messages[-1]["content"].replace("一套连续五图", NAMES[output_type]).replace("一套五图", NAMES[output_type]).replace("五图", NAMES[output_type])
+    return {"schema_version": 2, "output_type": output_type, "delivery_types": delivery_types, "creative_draft": creative_draft, "copy_edit": copy_edit, "parent_creation_id": old.snapshot.get("parent_creation_id") if old else None, "text": text, "messages": messages, "render_mode": "illustration" if illustration else "real_assets", "facts": facts, "sources": sources,
             "design_references": {"brand_color": memory.facts.get("brand_color"), "source": "confirmed_project_facts", "fact_version": memory.version} if memory and memory.facts.get("brand_color") else {},
             "assets": manifest, "show_price": bool(show_price), "show_store_name": show_store,
             "style": design_style, "provider": payload.provider, "gaps": gaps,

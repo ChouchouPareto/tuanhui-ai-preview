@@ -8,12 +8,14 @@ from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = [
+    "backend/app/api.py", "backend/app/models.py", "backend/app/core/config.py", "backend/app/services/output_contract.py",
     "backend/app/services/design_plan.py", "backend/app/services/layout_catalog.py",
     "backend/app/services/copy_policy.py", "backend/app/services/image_generation.py",
     "backend/app/services/master_layout.py", "backend/app/services/intake_understanding.py",
     "backend/app/services/model_gateway.py", "backend/app/services/analysis.py", "backend/app/schemas.py",
     "backend/app/services/intake.py", "backend/app/creation_api.py",
     "backend/app/services/text_guard.py", "backend/app/services/recognize_text.swift", "backend/app/services/telemetry.py",
+    "backend/app/services/category_policy.py", "backend/app/services/creative_workflow.py", "scripts/export_template_review.py",
 ]
 
 

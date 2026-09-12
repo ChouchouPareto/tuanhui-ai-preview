@@ -1,0 +1,2308 @@
+{
+  "release": "v0.11.0",
+  "owner_review": "pending",
+  "templates": [
+    {
+      "id": "L01",
+      "name": "左文右主视觉",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.03,
+            0.15,
+            0.25,
+            0.68
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L01_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.32,
+            0.06,
+            0.64,
+            0.88
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L01_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.03,
+            0.02,
+            0.12,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L01_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L02",
+      "name": "右文左主视觉",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.72,
+            0.15,
+            0.25,
+            0.68
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L02_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.03,
+            0.06,
+            0.63,
+            0.88
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L02_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.85,
+            0.02,
+            0.12,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L02_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L03",
+      "name": "中置标题两侧呼应",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.39,
+            0.14,
+            0.23,
+            0.72
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L03_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.02,
+            0.06,
+            0.32,
+            0.88
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L03_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.66,
+            0.1,
+            0.32,
+            0.83
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L03_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.46,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L03_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L04",
+      "name": "左主菜中标题右辅菜",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.33,
+            0.15,
+            0.24,
+            0.7
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L04_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.01,
+            0.03,
+            0.28,
+            0.94
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L04_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.61,
+            0.16,
+            0.36,
+            0.76
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L04_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.4,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L04_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L05",
+      "name": "左辅菜中标题右主菜",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.43,
+            0.15,
+            0.24,
+            0.7
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L05_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.03,
+            0.16,
+            0.35,
+            0.76
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L05_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.71,
+            0.03,
+            0.28,
+            0.94
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L05_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.5,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L05_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L06",
+      "name": "左文右双菜错落",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.03,
+            0.14,
+            0.24,
+            0.72
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L06_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.31,
+            0.02,
+            0.35,
+            0.92
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L06_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.69,
+            0.2,
+            0.28,
+            0.68
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L06_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.04,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L06_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L07",
+      "name": "右文左双菜错落",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.73,
+            0.14,
+            0.24,
+            0.72
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L07_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.03,
+            0.2,
+            0.28,
+            0.68
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L07_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.34,
+            0.02,
+            0.35,
+            0.92
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L07_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.87,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L07_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L08",
+      "name": "中左文两端静物",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.25,
+            0.15,
+            0.24,
+            0.7
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L08_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.01,
+            0.22,
+            0.2,
+            0.68
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L08_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.53,
+            0.04,
+            0.44,
+            0.92
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L08_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.32,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L08_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L09",
+      "name": "中右文两端静物",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.51,
+            0.15,
+            0.24,
+            0.7
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L09_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.03,
+            0.04,
+            0.44,
+            0.92
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L09_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.79,
+            0.22,
+            0.2,
+            0.68
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L09_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.59,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L09_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L10",
+      "name": "左侧品牌右三素材",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.02,
+            0.15,
+            0.22,
+            0.7
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L10_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.28,
+            0.17,
+            0.2,
+            0.66
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L10_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.51,
+            0.03,
+            0.24,
+            0.94
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L10_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.78,
+            0.2,
+            0.2,
+            0.66
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L10_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.07,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L10_5",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L11",
+      "name": "右侧品牌左三素材",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.76,
+            0.15,
+            0.22,
+            0.7
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L11_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.02,
+            0.2,
+            0.2,
+            0.66
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L11_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.25,
+            0.03,
+            0.24,
+            0.94
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L11_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.52,
+            0.17,
+            0.2,
+            0.66
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L11_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.84,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L11_5",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L12",
+      "name": "中央品牌两翼不对称",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.42,
+            0.15,
+            0.2,
+            0.72
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L12_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.01,
+            0.04,
+            0.36,
+            0.92
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L12_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.67,
+            0.23,
+            0.3,
+            0.64
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L12_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.48,
+            0.02,
+            0.08,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L12_4",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L13",
+      "name": "左侧小标题右侧宽景",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.03,
+            0.26,
+            0.19,
+            0.55
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L13_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.27,
+            0.05,
+            0.7,
+            0.9
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L13_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.03,
+            0.05,
+            0.1,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L13_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L14",
+      "name": "右侧小标题左侧宽景",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.78,
+            0.26,
+            0.19,
+            0.55
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L14_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.03,
+            0.05,
+            0.7,
+            0.9
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L14_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.84,
+            0.05,
+            0.1,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L14_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L15",
+      "name": "左侧宽标题右侧聚焦",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.03,
+            0.2,
+            0.38,
+            0.64
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L15_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.47,
+            0.08,
+            0.49,
+            0.84
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L15_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.04,
+            0.04,
+            0.1,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L15_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L16",
+      "name": "右侧宽标题左侧聚焦",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.59,
+            0.2,
+            0.38,
+            0.64
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L16_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.04,
+            0.08,
+            0.49,
+            0.84
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L16_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.86,
+            0.04,
+            0.1,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L16_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L17",
+      "name": "左侧紧凑标题右侧低位主体",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.05,
+            0.11,
+            0.27,
+            0.55
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L17_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.39,
+            0.2,
+            0.56,
+            0.76
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L17_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.06,
+            0.73,
+            0.1,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L17_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    },
+    {
+      "id": "L18",
+      "name": "右侧紧凑标题左侧低位主体",
+      "outputs": [
+        "five_panel",
+        "three_panel"
+      ],
+      "regions": [
+        {
+          "role": "copy",
+          "box": [
+            0.68,
+            0.11,
+            0.27,
+            0.55
+          ],
+          "allowed": [
+            "品牌名",
+            "主标题",
+            "短文案",
+            "已确认价格"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L18_1",
+          "z_index": 10,
+          "render_by": "program",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "visual",
+          "box": [
+            0.05,
+            0.2,
+            0.56,
+            0.76
+          ],
+          "allowed": [
+            "授权菜品素材",
+            "主题示意静物"
+          ],
+          "required": true,
+          "visible_border": false,
+          "id": "L18_2",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        },
+        {
+          "role": "accent",
+          "box": [
+            0.83,
+            0.73,
+            0.1,
+            0.1
+          ],
+          "allowed": [
+            "已验证Logo线索",
+            "插画",
+            "图案素材"
+          ],
+          "required": false,
+          "visible_border": false,
+          "id": "L18_3",
+          "z_index": 1,
+          "render_by": "visual_executor",
+          "flexibility": "区域内变化；不画边框、不遮挡文字"
+        }
+      ],
+      "rules": [
+        "一张完整画布，不显示区域边框",
+        "主视觉有主次，允许区域内尺度与位置变化",
+        "同一色调、材质、字体层级与光影",
+        "没有Logo不生成虚假官方标识",
+        "不把输出裁切边界解释为构图区",
+        "缺少辅助素材时留出呼吸空间，不发明真实菜品"
+      ],
+      "catalog_version": "layout-regions-v2",
+      "schema_version": 2,
+      "review_status": "pending_owner_review",
+      "release_channel": "internal_preview",
+      "coordinate_system": "normalized_xywh_top_left",
+      "reference_policy": "review_only_never_model_input",
+      "categories": [
+        "food",
+        "beauty",
+        "leisure",
+        "shopping",
+        "general"
+      ],
+      "typography": {
+        "renderer": "program",
+        "hierarchy": [
+          "brand",
+          "headline",
+          "support",
+          "price"
+        ],
+        "overflow": "fit_then_fail",
+        "duplicate_text": "remove_exact_duplicate"
+      }
+    }
+  ],
+  "category_packs": {
+    "food": {
+      "name": "餐饮",
+      "children": {
+        "regional": "地方特色菜",
+        "hotpot": "火锅",
+        "bbq": "烧烤",
+        "bar": "酒吧",
+        "light_meal": "轻餐",
+        "noodles": "面食",
+        "dumplings": "饺子馄饨",
+        "cafe": "咖啡茶饮"
+      },
+      "subject": "餐具与餐桌材质的主题静物，不推测具体菜单",
+      "copy": [
+        "把这一餐，留给好心情",
+        "今天的相聚，从这里开始",
+        "给日常，添一点滋味",
+        "这一刻，慢慢享用",
+        "下一餐，换个心情",
+        "留点时间，好好吃饭"
+      ],
+      "avoid": [
+        "未经证实的现做、手工、新鲜、产地及销量承诺"
+      ]
+    },
+    "beauty": {
+      "name": "丽人",
+      "children": {
+        "hair": "美发",
+        "nails": "美甲",
+        "skincare": "美容护理"
+      },
+      "subject": "护理工具与材质的抽象静物，不展示虚构疗效前后对比",
+      "copy": [
+        "给自己，一点焕新的时间",
+        "让喜欢的风格，成为日常",
+        "今天，把时间留给自己",
+        "从细节，遇见新心情",
+        "自己的风格，慢慢挑选",
+        "留一点时间，照顾自己"
+      ],
+      "avoid": [
+        "治疗、逆龄、永久、效果保证及未经证实的资质"
+      ]
+    },
+    "leisure": {
+      "name": "休闲娱乐",
+      "children": {
+        "games": "桌游娱乐",
+        "sports": "运动",
+        "spa": "休闲养生"
+      },
+      "subject": "与休闲主题有关的光影静物，不虚构场馆实景",
+      "copy": [
+        "把空闲，留给喜欢的事",
+        "今天，换一种放松方式",
+        "给日常，安排一点乐趣",
+        "约个时间，一起出发",
+        "这一刻，暂时放慢",
+        "好心情，从相聚开始"
+      ],
+      "avoid": [
+        "虚构设施、医疗功效及安全绝对保证"
+      ]
+    },
+    "shopping": {
+      "name": "购物",
+      "children": {
+        "retail": "零售",
+        "flowers": "鲜花",
+        "clothing": "服饰"
+      },
+      "subject": "陈列台与包装材质，不虚构具体品牌产品",
+      "copy": [
+        "把喜欢，带进日常",
+        "为生活，挑一点心意",
+        "今天，发现一点新意",
+        "喜欢的细节，值得停留",
+        "慢慢挑，选你喜欢",
+        "给日常，一份新灵感"
+      ],
+      "avoid": [
+        "虚构折扣、库存、正品授权及销量"
+      ]
+    },
+    "general": {
+      "name": "待明确类目",
+      "children": {},
+      "subject": "抽象材质与光影，不推测商家经营内容",
+      "copy": [
+        "发现日常里的新意",
+        "把喜欢，留在这一刻",
+        "为今天，添一点灵感",
+        "从这里，开始新体验",
+        "给日常，换一种心情",
+        "值得停留的一刻"
+      ],
+      "avoid": [
+        "臆测经营类目与商品事实"
+      ]
+    }
+  },
+  "roles": {
+    "understanding": {
+      "executor": "llm_or_rules",
+      "input": [
+        "current_message",
+        "verified_context"
+      ],
+      "output": [
+        "evidence_backed_facts",
+        "creative_draft"
+      ],
+      "max_calls": 1
+    },
+    "planning": {
+      "executor": "program",
+      "input": [
+        "facts",
+        "category_pack",
+        "eligible_templates",
+        "recent_five"
+      ],
+      "output": [
+        "design_plan"
+      ],
+      "max_calls": 0
+    },
+    "visual": {
+      "executor": "image_model",
+      "input": [
+        "selected_layout",
+        "style",
+        "subject"
+      ],
+      "output": [
+        "wordless_master"
+      ],
+      "max_calls": 1
+    },
+    "quality": {
+      "executor": "local_ocr_and_geometry",
+      "input": [
+        "wordless_master",
+        "copy",
+        "layout"
+      ],
+      "output": [
+        "quality_report",
+        "exports"
+      ],
+      "max_calls": 0
+    }
+  },
+  "outputs": {
+    "five_panel": {
+      "ratio": "20:3",
+      "size": [
+        4000,
+        600
+      ],
+      "slices": 5
+    },
+    "three_panel": {
+      "ratio": "12:3",
+      "size": [
+        2400,
+        600
+      ],
+      "slices": 3
+    },
+    "logo": {
+      "ratio": "4:3",
+      "size": [
+        800,
+        600
+      ],
+      "slices": 1,
+      "safe_area": [
+        0.125,
+        0,
+        0.75,
+        1
+      ]
+    },
+    "package_main": {
+      "ratio": "4:3",
+      "size": [
+        800,
+        600
+      ],
+      "slices": 1,
+      "safe_area": [
+        0.125,
+        0,
+        0.75,
+        1
+      ]
+    },
+    "voucher_main": {
+      "ratio": "4:3",
+      "size": [
+        800,
+        600
+      ],
+      "slices": 1,
+      "safe_area": [
+        0.125,
+        0,
+        0.75,
+        1
+      ]
+    },
+    "dish": {
+      "ratio": "4:3",
+      "size": [
+        800,
+        600
+      ],
+      "slices": 1
+    },
+    "promotion": {
+      "ratio": "4:3",
+      "size": [
+        800,
+        600
+      ],
+      "slices": 1
+    },
+    "store_decoration": {
+      "configured": false
+    },
+    "detail": {
+      "configured": false
+    }
+  },
+  "reference_policy": "原案例只给人审核，运行时禁止发送原案例像素、路径、品牌文案"
+}
