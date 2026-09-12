@@ -32,6 +32,7 @@ class IntakeInput(BaseModel):
     style: Literal["appetite", "brand", "street", "minimal"] = "appetite"
     provider: Literal["qwen", "doubao"] = "qwen"
     use_ai: bool = False
+    allow_illustration: bool = False
     accepted_understanding_policy: Literal["text-understanding-paid-v1"] | None = None
     input_mode: Literal["merge", "replace", "reply", "chat"] = "merge"
     reply_field: Literal["store_name", "hero_item", "positioning", "selling_points", "hero_price"] | None = None
@@ -217,7 +218,9 @@ def compile_intake(db, creation, payload):
             match = re.fullmatch(r"(?:请|想要|要)?(?:风格)?(?:换成|改成)?(温馨|烟火|简约|清爽|高级|品牌质感|有食欲)(?:一点|一些|风格)?", clause.strip())
             if match:
                 design_style = {"温馨": "street", "烟火": "street", "简约": "minimal", "清爽": "minimal", "高级": "brand", "品牌质感": "brand", "有食欲": "appetite"}[match[1]]
-    illustration = False
+    # Explicit UI policy: absent usable photos may use a labelled illustration.
+    # Older clients retain their original real-photo requirement.
+    illustration = payload.allow_illustration and creation.mode == "oneclick" and not any(a["usage"] == "renderable" for a in manifest)
     if chat:
         for clause in re.split(r"[\n；;，,。！!]", text):
             if re.fullmatch(r"(?:请)?(?:使用|做|生成|改成|选择|先做)\s*AI\s*示意图", clause.strip(), re.I):

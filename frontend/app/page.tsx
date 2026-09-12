@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { M1Review, IntakeSeed, IntakeController } from "./m1-review";
 import { ReferenceCategory, ReferenceThumbnail } from "./reference-thumbnail";
-import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest, apiUrl, jsonRequest } from "../lib/api-client";
 import { Asset, Coverage, Facts, MenuProduct, StoreNameCandidate } from "../features/store-intake/types";
 
@@ -298,20 +298,15 @@ function QuickSelectMenu({ menuKey, label, value, options, openMenu, onOpenMenu,
   </div>;
 }
 
-function QuickFactConfirmation({ coverage, busy, onSubmit, onConfirmAndGenerate }: { coverage: Coverage; busy: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: () => void }) {
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const currentQuestion = coverage.questions[questionIndex];
-  const facts = coverage.facts;
-  const factValue = (key: string) => Array.isArray(facts[key]) ? (facts[key] as string[]).join("、") : String(facts[key] ?? "待确认");
-  return <section className="quickConfirmPanel" aria-labelledby="quick-confirm-title">
-    <div className="quickConfirmHeader"><div><span className="stepKicker">首页确认</span><h2 id="quick-confirm-title">确认真实信息后直接生成</h2><p>店名、价格和卖点以这里为准；确认后将调用图片模型。</p></div><span>{coverage.ready_for_confirmation ? "资料已齐" : `待补充 ${coverage.questions.length} 项`}</span></div>
-    {currentQuestion ? <form className="quickQuestionForm" onSubmit={onSubmit}>{coverage.questions.map((question, index) => index === questionIndex ? null : <input key={question.field} type="hidden" name={question.field} value={answers[question.field] ?? ""} />)}<label htmlFor={`quick-${currentQuestion.field}`}>{currentQuestion.question}</label><div><input id={`quick-${currentQuestion.field}`} name={currentQuestion.field} value={answers[currentQuestion.field] ?? ""} placeholder="输入准确答案" onChange={(event) => setAnswers((current) => ({ ...current, [currentQuestion.field]: event.target.value }))} /><button className="primaryButton" disabled={busy || !answers[currentQuestion.field]?.trim()}>{questionIndex === coverage.questions.length - 1 ? "完成补充" : "保存并继续"}<Icon name="arrow" size={16} /></button></div>{questionIndex > 0 && <button className="quickQuestionBack" type="button" onClick={() => setQuestionIndex((value) => value - 1)}>返回上一项</button>}</form> : <><dl className="quickFacts"><div><dt>门店名称</dt><dd>{factValue("store_name")}</dd></div><div><dt>主推内容</dt><dd>{factValue("hero_item")}</dd></div><div><dt>真实价格</dt><dd>{factValue("hero_price")}</dd></div><div><dt>核心卖点</dt><dd>{factValue("selling_points")}</dd></div></dl><button className="primaryButton quickGenerateConfirm" type="button" disabled={busy || !coverage.ready_for_confirmation} onClick={onConfirmAndGenerate}>{busy ? "正在准备生成…" : <>确认无误，直接生成<Icon name="arrow" size={17} /></>}</button></>}
-  </section>;
-}
-
-function QuickCreationHome({ mode, projectId, projectName, assets, coverage, generationTask, designPlan, busy, message, messageTone, onSubmit, onSubmitFacts, onConfirmAndGenerate, onGenerateExisting, onOpenOneClick, onOpenProfessional, onOpenLibrary, onPause, intakeSeed, onPrepareAssets }: { mode: CreationView; projectId: string; projectName: string; assets: Asset[]; coverage: Coverage | null; generationTask: GenerationTask | null; designPlan: DesignPlan | null; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean>; onSubmitFacts: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: (style: string, model: string) => void; onGenerateExisting: () => void; onOpenOneClick: () => void; onOpenProfessional: () => void; onOpenLibrary: (tab: LibraryTab) => void; onPause: () => void; intakeSeed?: IntakeSeed | null; onPrepareAssets?: (items: PendingUpload[]) => Promise<Asset[]> }) {
+function QuickCreationHome({ mode, projectId, projectName, assets, coverage, generationTask, busy, message, messageTone, onSubmit, onOpenOneClick, onOpenProfessional, onOpenLibrary, intakeSeed, onPrepareAssets }: { mode: CreationView; projectId: string; projectName: string; assets: Asset[]; coverage: Coverage | null; generationTask: GenerationTask | null; designPlan: DesignPlan | null; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean>; onSubmitFacts: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: (style: string, model: string) => void; onGenerateExisting: () => void; onOpenOneClick: () => void; onOpenProfessional: () => void; onOpenLibrary: (tab: LibraryTab) => void; onPause: () => void; intakeSeed?: IntakeSeed | null; onPrepareAssets?: (items: PendingUpload[]) => Promise<Asset[]> }) {
   const [brief, setBrief] = useState("");
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [generationActive, setGenerationActive] = useState(false);
+  const authorized = useRef(false);
+  const canAutoGenerate = useCallback(() => authorized.current, []);
+  const handleGenerationActive = useCallback((active: boolean) => { setGenerationActive(active); if (!active) authorized.current = false; }, []);
+  const consentRef = useRef<HTMLDialogElement>(null);
+  const simpleFormRef = useRef<HTMLFormElement>(null);
   const [storeItems, setStoreItems] = useState<PendingUpload[]>([]);
   const [dishItems, setDishItems] = useState<PendingUpload[]>([]);
   const intakeController = useRef<IntakeController>(null);
@@ -408,39 +403,13 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   const storeGroup = <ReferenceCategory label="门店" count={storeItems.length + selectedSaved.filter((item) => item.kind === "store").length} onAdd={() => storeInputRef.current?.click()}>{assetGroup("store")}</ReferenceCategory>;
   const dishGroup = <ReferenceCategory label="菜品·菜单" count={dishItems.length + selectedSaved.filter((item) => item.kind === "dish").length} onAdd={() => dishInputRef.current?.click()}>{assetGroup("dish")}</ReferenceCategory>;
 
-  return <section className="quickCreationHome" aria-labelledby="quick-creation-title">
-    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className={mode === "professional" ? "active" : ""} role="tab" aria-selected={mode === "professional"} onClick={onOpenProfessional}>创作</button><button type="button" className={mode === "oneclick" ? "active" : ""} role="tab" aria-selected={mode === "oneclick"} onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>装修全案</button></div><h1 id="quick-creation-title">让每家门店，都有一套会成交的设计</h1></header>
-    <form className="quickComposer" noValidate onSubmit={submit} aria-busy={reviewBusy} inert={reviewBusy}>
-      <div className="quickComposerBody hasReferences">
-        <div className="quickAssetRail" aria-label="本次参考素材">
-          {storeGroup}
-          {dishGroup}
-          <button type="button" className="quickAssetExpand" aria-label="展开参考素材" data-tooltip="展开参考素材" onClick={() => setAssetDialog("all")}><Icon name="arrow" size={14} /></button>
-        </div>
-        <div className="quickPrompt">{mode === "oneclick" && <div ref={setConversationTarget} className="conversationThread" />}<label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"本次重点",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "想做什么图？说一句，或者上传照片。"} onChange={(event) => setBrief(event.target.value)} /></div>
-      </div>
-      <div className="quickComposerToolbar" ref={toolbarRef}>
-        <div className="quickToolbarStart">
-          <div className={`quickAddMenu ${openMenu === "add" ? "isOpen" : ""}`}>
-            <button type="button" className="quickIconButton" aria-label="快捷添加" aria-haspopup="menu" aria-expanded={openMenu === "add"} onClick={() => setOpenMenu(openMenu === "add" ? null : "add")}><Icon name="plus" size={22} /></button>
-            {openMenu === "add" && <div className="quickAddPopover" role="menu">
-              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); storeInputRef.current?.click(); }}><Icon name="upload" size={17} /><span><b>本地上传</b><small>添加门头、环境或 Logo 图片</small></span></button>
-              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onOpenLibrary("store"); }}><Icon name="folder" size={17} /><span><b>素材库</b><small>引用项目中已经保存的图片</small></span></button>
-              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); dishInputRef.current?.click(); }}><Icon name="image" size={17} /><span><b>菜单与菜品</b><small>批量选择菜单、套餐和菜品图</small></span></button>
-            </div>}
-          </div>
-          <button type="button" className="quickIconButton quickMentionButton" aria-label="管理参考素材" aria-haspopup="dialog" onClick={() => { setOpenMenu(null); setAssetDialog("all"); }}><span>@</span></button>
-        </div>
-        <div className="quickToolbarMenus"><QuickSelectMenu menuKey="model" label="模型" value={model} options={QUICK_OPTIONS.model} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setModel} /><QuickSelectMenu menuKey="style" label="风格" value={style} options={QUICK_OPTIONS.style} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setStyle} /><QuickSelectMenu menuKey="layout" label="布局" value={layout} options={QUICK_OPTIONS.layout} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setLayout} /><QuickSelectMenu menuKey="template" label="模板" value={template} options={QUICK_OPTIONS.template} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setTemplate} /><div className={`quickPreference ${openMenu === "preference" ? "isOpen" : ""}`}><button type="button" className="quickPreferenceTrigger" aria-haspopup="dialog" aria-expanded={openMenu === "preference"} onClick={() => setOpenMenu(openMenu === "preference" ? null : "preference")}><Icon name="spark" size={16} /><b>智能匹配</b><span>创作偏好</span><i aria-hidden="true" /></button>{openMenu === "preference" && <div className="quickPreferencePanel"><div className="preferenceTabs"><button className="active" type="button">图片偏好</button><button type="button">推理模型</button></div><section><div><small>输出画布</small><strong>20:3 团购五联长图</strong><p>生成后自动裁切为五张 4:3 图片</p></div><div className="ratioChoices"><button className="active" type="button">20:3</button><button type="button" disabled>1:1</button><button type="button" disabled>3:4</button></div></section></div>}</div></div>
-        <div className="quickToolbarEnd"><button className={`canvasToggle ${canvasMode ? "active" : ""}`} type="button" aria-pressed={canvasMode} onClick={() => setCanvasMode((value) => !value)}><span aria-hidden="true" />画布</button><button className="quickSubmit" type="submit" disabled={busy} aria-label={busy ? "正在整理资料" : "提交创作需求"}>{busy ? <span>整理中</span> : <Icon name="arrow" size={20} />}</button></div>{mode === "oneclick" && <p className="chatPolicy">发送后自动理解文字，可能产生模型费用；图片生成前由你点击开始。</p>}
-      </div>
-      {(error || messageTone === "error") && <p className="quickComposerError" role="alert"><Icon name="close" size={15} />{error || message}</p>}
-    {mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
-      controller={intakeController} target={conversationTarget}
+
+  const reviewPanel = mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
+      autoGenerate={canAutoGenerate} onGenerationActive={handleGenerationActive} controller={intakeController} target={conversationTarget}
       draft={{ text: [conversationText, brief].filter(Boolean).join("\n"), assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
         style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string,string>)[style] ?? "appetite",
         provider: model.includes("豆包") ? "doubao" : "qwen" }}
-      onReply={field => { if (field === "illustration") setBrief("使用AI示意图"); promptRef.current?.focus(); promptRef.current?.scrollIntoView({block:"center",behavior:"auto"}); }}
+      onReply={field => { if (field === "illustration") setBrief("使用AI示意图"); promptRef.current?.focus({ preventScroll: true }); }}
       onBusy={setReviewBusy}
       onRestore={snapshot => {
         setConversationText(snapshot.text); setBrief("");
@@ -459,12 +428,71 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         return { text: brief, replyField: null, chat: true, useAi: Boolean(brief.trim()), assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
           style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string, string>)[style] ?? "appetite",
           provider: model.includes("豆包") ? "doubao" : "qwen" };
-      }} />}
+      }} />;
+  const workbench = sessionStarted || Boolean(intakeSeed || conversationText || generationTask);
+  if (mode === "oneclick") return <section className={`oneclickStudio ${workbench ? "isWorking" : "isWelcome"}`} aria-label="一键生图工作区">
+    <header className="studioHeader"><span>{projectName || "新建创作"}</span><div><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")}>素材与设置</button><a href={projectId ? `/?project=${projectId}&compose=1` : "/"}>新建创作</a></div></header>
+    <div className="studioWelcome" hidden={workbench}>
+      <div className="creationTypeTabs" aria-label="创作模式"><button type="button" onClick={onOpenProfessional}>创作</button><button type="button" className="active" aria-current="page" onClick={onOpenOneClick}>一键生图</button><button type="button" disabled title="全案设计暂未开放">全案设计</button></div>
+      <h1>今天，想为门店做什么图？</h1><p>说一句想法，或放几张照片。设计交给团绘。</p>
+    </div>
+    <div ref={setConversationTarget} className="studioMessages" role="region" aria-label="创作消息" tabIndex={0} hidden={!workbench}>
+      {busy && !reviewBusy && <p role="status">正在保存本次资料…</p>}
+    </div>
+    <form ref={simpleFormRef} className="studioComposer" onSubmit={event => {
+      event.preventDefault();
+      if (generationActive) { void intakeController.current?.pause(); return; }
+      if (!brief.trim() && !localAssets.length && !selectedSaved.length) { setError("想做什么图？说个品类，或放张照片就行。"); promptRef.current?.focus(); return; }
+      if (!authorized.current) { consentRef.current?.showModal(); return; }
+      setSessionStarted(true); void submit(event);
+    }} aria-busy={busy || reviewBusy}>
+      <div className="studioInputRow">
+        <button type="button" className="studioUploadCard" aria-label="添加照片" disabled={busy || reviewBusy} onClick={() => dishInputRef.current?.click()}><span aria-hidden="true">＋</span><small>加照片</small></button>
+        <label className="studioInput"><span className="srOnly">创作需求</span><textarea ref={promptRef} value={brief} disabled={busy || reviewBusy} maxLength={8000} rows={3} placeholder={workbench ? "接着说，或者告诉我哪里想改。" : "比如：给袁记云饺做一套团购五连图，清爽一点"} onChange={e => { setBrief(e.target.value); setError(""); }} /></label>
+      </div>
+      {(localAssets.length > 0 || selectedSaved.length > 0) && <div className="studioAttachments" aria-label="本次照片">{assetGroup("store")}{assetGroup("dish")}</div>}
+      <footer className="studioToolbar"><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")} aria-expanded={!!assetDialog}>五连图 · {style === "智能匹配" ? "自动风格" : style}</button><button className="studioPrimary" type="submit" disabled={busy || reviewBusy}>{generationActive ? "停止生成" : busy || reviewBusy ? "正在理解…" : workbench ? "发送" : "开始生成"}</button></footer>
+      <p className="studioPolicy">无实拍可做 AI 示意图；门头仅用于识别，不放进成品。</p>
+      {(error || messageTone === "error") && <p className="studioHint" role="alert">{error || message}</p>}
     </form>
-    {!(mode === "oneclick" && projectId) && <div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>}
-    {mode === "oneclick" && coverage && !generationTask && designPlan?.status !== "CONFIRMED" && <QuickFactConfirmation key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={onSubmitFacts} onConfirmAndGenerate={() => onConfirmAndGenerate(style, model)} />}
-    {mode === "oneclick" && (designPlan?.status === "CONFIRMED" || generationTask) && <div className="quickGenerationPanel"><GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={onGenerateExisting} onPause={onPause} /></div>}
-    {!(mode === "oneclick" && projectId) && !coverage && !generationTask && <CreationDiscovery />}
+    {assetDialog && <section className="studioSettings" aria-label="素材与设置"><header><h2>素材与设置</h2><button type="button" onClick={() => setAssetDialog(null)}>收起</button></header><p>门头、菜单仅用于识别；请选择真实菜品照片用于成品。</p><div className="studioSettingsActions"><button type="button" onClick={() => storeInputRef.current?.click()}>添加门头参考</button><button type="button" onClick={() => dishInputRef.current?.click()}>添加菜品照片</button><button type="button" onClick={() => onOpenLibrary("store")}>打开素材库</button></div><label>风格<select value={style} onChange={e => setStyle(e.target.value)}>{QUICK_OPTIONS.style.map(v => <option key={v}>{v}</option>)}</select></label><label>生图模型<select value={model} onChange={e => setModel(e.target.value)}>{QUICK_OPTIONS.model.map(v => <option key={v}>{v}</option>)}</select></label></section>}
+    <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => chooseFiles(e,"store")} />
+    <input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => chooseFiles(e,"dish")} />
+    <dialog ref={consentRef} className="studioConsent"><h2>开始前，先让你知道费用</h2><p>本地内测使用你配置的模型账号，文字理解和图片生成按服务商实际用量计费。当前还没有接入积分报价，无法提前给出准确金额。</p><p>同意后，本次需求清楚即可自动生成一套五连图；信息不足时会先问你。不自动重试失败任务。</p><p>请确认拥有上传素材的使用权。没有照片时使用带标识的 AI 示意图。</p><div><button type="button" onClick={() => consentRef.current?.close()}>先不生成</button><button className="studioPrimary" type="button" onClick={() => { authorized.current = true; consentRef.current?.close(); simpleFormRef.current?.requestSubmit(); }}>同意并开始</button></div></dialog>
+    {reviewPanel}
+  </section>;
+
+  return <section className="quickCreationHome" aria-labelledby="quick-creation-title">
+    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className={mode === "professional" ? "active" : ""} role="tab" aria-selected={mode === "professional"} onClick={onOpenProfessional}>创作</button><button type="button" className={false ? "active" : ""} role="tab" aria-selected={false} onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>全案设计</button></div><h1 id="quick-creation-title">让每家门店，都有一套会成交的设计</h1></header>
+    <form className="quickComposer" noValidate onSubmit={submit} aria-busy={reviewBusy} inert={reviewBusy}>
+      <div className="quickComposerBody hasReferences">
+        <div className="quickAssetRail" aria-label="本次参考素材">
+          {storeGroup}
+          {dishGroup}
+          <button type="button" className="quickAssetExpand" aria-label="展开参考素材" data-tooltip="展开参考素材" onClick={() => setAssetDialog("all")}><Icon name="arrow" size={14} /></button>
+        </div>
+        <div className="quickPrompt"><label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"本次重点",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "想做什么图？说一句，或者上传照片。"} onChange={(event) => setBrief(event.target.value)} /></div>
+      </div>
+      <div className="quickComposerToolbar" ref={toolbarRef}>
+        <div className="quickToolbarStart">
+          <div className={`quickAddMenu ${openMenu === "add" ? "isOpen" : ""}`}>
+            <button type="button" className="quickIconButton" aria-label="快捷添加" aria-haspopup="menu" aria-expanded={openMenu === "add"} onClick={() => setOpenMenu(openMenu === "add" ? null : "add")}><Icon name="plus" size={22} /></button>
+            {openMenu === "add" && <div className="quickAddPopover" role="menu">
+              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); storeInputRef.current?.click(); }}><Icon name="upload" size={17} /><span><b>本地上传</b><small>添加门头、环境或 Logo 图片</small></span></button>
+              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onOpenLibrary("store"); }}><Icon name="folder" size={17} /><span><b>素材库</b><small>引用项目中已经保存的图片</small></span></button>
+              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); dishInputRef.current?.click(); }}><Icon name="image" size={17} /><span><b>菜单与菜品</b><small>批量选择菜单、套餐和菜品图</small></span></button>
+            </div>}
+          </div>
+          <button type="button" className="quickIconButton quickMentionButton" aria-label="管理参考素材" aria-haspopup="dialog" onClick={() => { setOpenMenu(null); setAssetDialog("all"); }}><span>@</span></button>
+        </div>
+        <div className="quickToolbarMenus"><QuickSelectMenu menuKey="model" label="模型" value={model} options={QUICK_OPTIONS.model} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setModel} /><QuickSelectMenu menuKey="style" label="风格" value={style} options={QUICK_OPTIONS.style} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setStyle} /><QuickSelectMenu menuKey="layout" label="布局" value={layout} options={QUICK_OPTIONS.layout} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setLayout} /><QuickSelectMenu menuKey="template" label="模板" value={template} options={QUICK_OPTIONS.template} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setTemplate} /><div className={`quickPreference ${openMenu === "preference" ? "isOpen" : ""}`}><button type="button" className="quickPreferenceTrigger" aria-haspopup="dialog" aria-expanded={openMenu === "preference"} onClick={() => setOpenMenu(openMenu === "preference" ? null : "preference")}><Icon name="spark" size={16} /><b>智能匹配</b><span>创作偏好</span><i aria-hidden="true" /></button>{openMenu === "preference" && <div className="quickPreferencePanel"><div className="preferenceTabs"><button className="active" type="button">图片偏好</button><button type="button">推理模型</button></div><section><div><small>输出画布</small><strong>20:3 团购五联长图</strong><p>生成后自动裁切为五张 4:3 图片</p></div><div className="ratioChoices"><button className="active" type="button">20:3</button><button type="button" disabled>1:1</button><button type="button" disabled>3:4</button></div></section></div>}</div></div>
+        <div className="quickToolbarEnd"><button className={`canvasToggle ${canvasMode ? "active" : ""}`} type="button" aria-pressed={canvasMode} onClick={() => setCanvasMode((value) => !value)}><span aria-hidden="true" />画布</button><button className="quickSubmit" type="submit" disabled={busy} aria-label={busy ? "正在整理资料" : "提交创作需求"}>{busy ? <span>整理中</span> : <Icon name="arrow" size={20} />}</button></div>
+      </div>
+      {(error || messageTone === "error") && <p className="quickComposerError" role="alert"><Icon name="close" size={15} />{error || message}</p>}
+
+    </form>
+    {<div className={`conversationInlineStatus ${messageTone}`} role="status" aria-live="polite"><span>{messageTone === "success" ? <Icon name="check" size={15} /> : <Icon name="spark" size={15} />}</span><p>{message}</p></div>}
+    {!(false && projectId) && !coverage && !generationTask && <CreationDiscovery />}
     <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "store")} /><input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => chooseFiles(event, "dish")} />
     {assetDialog && <div className="referenceWorkspaceBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAssetDialog(null); }}>
       <button className="referenceWorkspaceClose" type="button" onClick={() => setAssetDialog(null)}><kbd>ESC</kbd><span>关闭</span></button>
@@ -475,7 +503,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           <div className="referenceAssetGrid">{(assetDialog === "all" || assetDialog === "store") && storeGroup}{(assetDialog === "all" || assetDialog === "dish") && dishGroup}</div>
           <span className="referenceCount">共 {visibleSavedAssets.length + visibleDialogItems.length} 张素材</span>
         </aside>
-        <div className="referenceWorkspacePrompt"><p>菜品图用于成品；门头和菜单仅作参考。移除仅取消本次引用，不删除项目素材。</p>{mode === "oneclick" && (excluded.length > 0 || restoredSelection !== null) && <button type="button" onClick={() => { setExcluded([]); setRestoredSelection(null); }}>重新选入项目素材</button>}<div><button type="button" onClick={() => setAssetDialog(null)}>完成选择</button></div></div>
+        <div className="referenceWorkspacePrompt"><p>菜品图用于成品；门头和菜单仅作参考。移除仅取消本次引用，不删除项目素材。</p>{(excluded.length > 0 || restoredSelection !== null) && <button type="button" onClick={() => { setExcluded([]); setRestoredSelection(null); }}>重新选入项目素材</button>}<div><button type="button" onClick={() => setAssetDialog(null)}>完成选择</button></div></div>
       </section>
     </div>}
   </section>;
@@ -483,7 +511,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
 
 function ConversationWorkbench({ projectName, message, messageTone, taskId, collectingFacts, onOpenOneClick, children }: { projectName: string; message: string; messageTone: "info" | "success" | "error"; taskId: string; collectingFacts: boolean; onOpenOneClick: () => void; children: ReactNode }) {
   return <section className="conversationHome" aria-labelledby="conversation-title">
-    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled title="装修全案将在后续付费版本开放">装修全案</button></div><h1 id="conversation-title">让每家门店，都有一套会成交的设计</h1></header>
+    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled title="装修全案将在后续付费版本开放">全案设计</button></div><h1 id="conversation-title">让每家门店，都有一套会成交的设计</h1></header>
     <section className="conversationWorkbench" id="guide" aria-label="团绘店长对话工作台">
       <div className="conversationThread"><div className="conversationStage">{children}</div></div>
     </section>
@@ -579,7 +607,7 @@ export default function Home() {
     {activeStep === 6 && <GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={startGeneration} onPause={pauseGeneration} />}
   </>;
 
-  return <div className="appShell">
+  return <div className={`appShell ${activeView === "oneclick" ? "studioShell" : ""}`}>
     <a className="skipLink" href="#workspace">跳到主要内容</a>
     <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} projectName={projectName} activeView={activeView} onNavigate={navigate} />
     <main className="mainArea" id="workspace">

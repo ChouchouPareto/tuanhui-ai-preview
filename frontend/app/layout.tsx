@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./styles.css";
+import "./studio.css";
 
 export const metadata: Metadata = {
   title: "团绘AI｜本地生活一键生图",
