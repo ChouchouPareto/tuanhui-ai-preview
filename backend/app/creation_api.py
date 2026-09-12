@@ -86,6 +86,7 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
         facts["selling_points"] = [facts["selling_points"]] if facts["selling_points"] else []
     facts.update(show_price=snapshot["show_price"], show_store_name=snapshot["show_store_name"])
     plan_data = build_design_plan(facts, snapshot["style"])
+    plan_data["render_mode"] = snapshot.get("render_mode", "real_assets")
     plan_data["selected_asset_ids"] = [a["id"] for a in snapshot["assets"] if a["usage"] == "renderable"]
     plan_data["creation_id"] = creation_id
     version = (db.scalar(select(func.max(DesignPlan.version)).where(DesignPlan.project_id == project_id)) or 0) + 1

@@ -318,7 +318,8 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const [replyField, setReplyField] = useState<string | null>(null);
   const [replyBackup, setReplyBackup] = useState("");
-  const [useAi, setUseAi] = useState(false);
+  const [conversationText, setConversationText] = useState("");
+  const [conversationTarget, setConversationTarget] = useState<HTMLDivElement | null>(null);
   const [assetDialog, setAssetDialog] = useState<"all" | "store" | "dish" | null>(null);
   const [excluded, setExcluded] = useState<string[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
@@ -383,7 +384,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
     if (mode === "professional" && !name) { setError("请在文字中写明“门店名称：×××”"); return; }
     if (mode === "professional" && !savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
     setError("");
-    const saved = await onSubmit({ name: name || "未命名门店项目", brief: `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
+    const saved = await onSubmit({ name: name || "未命名门店项目", brief: mode === "oneclick" ? brief.trim() : `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
     if (saved) { [...storeItems, ...dishItems].forEach((item) => URL.revokeObjectURL(item.previewUrl)); setStoreItems([]); setDishItems([]); }
   }
 
@@ -416,7 +417,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           {dishGroup}
           <button type="button" className="quickAssetExpand" aria-label="展开参考素材" data-tooltip="展开参考素材" onClick={() => setAssetDialog("all")}><Icon name="arrow" size={14} /></button>
         </div>
-        <div className="quickPrompt"><label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"本次重点",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "说说你的门店，以及这次想突出的菜品、套餐、卖点或特色…"} onChange={(event) => setBrief(event.target.value)} /></div>
+        <div className="quickPrompt">{mode === "oneclick" && <div ref={setConversationTarget} className="conversationThread" />}<label htmlFor="creation-prompt" className="srOnly">创作需求</label>{replyField && <span className="intakeReplyLabel">正在补充：{({store_name:"店名",hero_item:"本次重点",hero_price:"价格"} as Record<string,string>)[replyField] ?? "信息"}<button type="button" onClick={() => { setBrief(replyBackup); setReplyField(null); }}>取消补充</button></span>}<textarea id="creation-prompt" ref={promptRef} value={brief} maxLength={8000} disabled={busy} placeholder={replyField ? "直接输入补充内容，发送后合并到本次需求" : "想做什么图？说一句，或者上传照片。"} onChange={(event) => setBrief(event.target.value)} /></div>
       </div>
       <div className="quickComposerToolbar" ref={toolbarRef}>
         <div className="quickToolbarStart">
@@ -431,19 +432,19 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           <button type="button" className="quickIconButton quickMentionButton" aria-label="管理参考素材" aria-haspopup="dialog" onClick={() => { setOpenMenu(null); setAssetDialog("all"); }}><span>@</span></button>
         </div>
         <div className="quickToolbarMenus"><QuickSelectMenu menuKey="model" label="模型" value={model} options={QUICK_OPTIONS.model} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setModel} /><QuickSelectMenu menuKey="style" label="风格" value={style} options={QUICK_OPTIONS.style} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setStyle} /><QuickSelectMenu menuKey="layout" label="布局" value={layout} options={QUICK_OPTIONS.layout} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setLayout} /><QuickSelectMenu menuKey="template" label="模板" value={template} options={QUICK_OPTIONS.template} openMenu={openMenu} onOpenMenu={setOpenMenu} onSelect={setTemplate} /><div className={`quickPreference ${openMenu === "preference" ? "isOpen" : ""}`}><button type="button" className="quickPreferenceTrigger" aria-haspopup="dialog" aria-expanded={openMenu === "preference"} onClick={() => setOpenMenu(openMenu === "preference" ? null : "preference")}><Icon name="spark" size={16} /><b>智能匹配</b><span>创作偏好</span><i aria-hidden="true" /></button>{openMenu === "preference" && <div className="quickPreferencePanel"><div className="preferenceTabs"><button className="active" type="button">图片偏好</button><button type="button">推理模型</button></div><section><div><small>输出画布</small><strong>20:3 团购五联长图</strong><p>生成后自动裁切为五张 4:3 图片</p></div><div className="ratioChoices"><button className="active" type="button">20:3</button><button type="button" disabled>1:1</button><button type="button" disabled>3:4</button></div></section></div>}</div></div>
-        <div className="quickToolbarEnd">{mode === "oneclick" && <button className={`canvasToggle understandingToggle ${useAi ? "active" : ""}`} type="button" role="switch" aria-checked={useAi} aria-label="智能理解" aria-describedby="understanding-note" disabled={busy} onClick={() => setUseAi(value => !value)}><span aria-hidden="true" />智能理解</button>}<button className={`canvasToggle ${canvasMode ? "active" : ""}`} type="button" aria-pressed={canvasMode} onClick={() => setCanvasMode((value) => !value)}><span aria-hidden="true" />画布</button><button className="quickSubmit" type="submit" disabled={busy} aria-label={busy ? "正在整理资料" : "提交创作需求"}>{busy ? <span>整理中</span> : <Icon name="arrow" size={20} />}</button></div>{mode === "oneclick" && <p id="understanding-note" className={`understandingNote ${useAi ? "" : "srOnly"}`}>{useAi ? "已开启：发送即同意本次文字理解费用，仅发送文字，失败不自动重试。" : "关闭时不调用文字理解模型。开启后，发送即同意本次文字理解费用；仅发送文字，失败不自动重试。"}</p>}
+        <div className="quickToolbarEnd"><button className={`canvasToggle ${canvasMode ? "active" : ""}`} type="button" aria-pressed={canvasMode} onClick={() => setCanvasMode((value) => !value)}><span aria-hidden="true" />画布</button><button className="quickSubmit" type="submit" disabled={busy} aria-label={busy ? "正在整理资料" : "提交创作需求"}>{busy ? <span>整理中</span> : <Icon name="arrow" size={20} />}</button></div>{mode === "oneclick" && <p className="chatPolicy">发送后自动理解文字，可能产生模型费用；图片生成前由你点击开始。</p>}
       </div>
       {(error || messageTone === "error") && <p className="quickComposerError" role="alert"><Icon name="close" size={15} />{error || message}</p>}
     {mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
-      controller={intakeController}
-      draft={{ text: brief, assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
+      controller={intakeController} target={conversationTarget}
+      draft={{ text: [conversationText, brief].filter(Boolean).join("\n"), assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
         style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string,string>)[style] ?? "appetite",
         provider: model.includes("豆包") ? "doubao" : "qwen" }}
-      onReply={field => { if (field) { setReplyBackup(brief); setBrief(""); setReplyField(field); } else if (replyField) { setBrief(replyBackup); setReplyField(null); } promptRef.current?.focus(); promptRef.current?.scrollIntoView({block:"center",behavior:"auto"}); }}
+      onReply={field => { if (field === "illustration") setBrief("使用AI示意图"); promptRef.current?.focus(); promptRef.current?.scrollIntoView({block:"center",behavior:"auto"}); }}
       onBusy={setReviewBusy}
       onRestore={snapshot => {
-        setBrief(snapshot.text.split("\n视觉风格：")[0]);
-        setReplyField(null); setUseAi(false);
+        setConversationText(snapshot.text); setBrief("");
+        setReplyField(null);
         setStyle(({ brand: "品牌质感", street: "烟火市井", minimal: "清爽简约" } as Record<string, string>)[snapshot.style] ?? QUICK_OPTIONS.style[0]);
         setModel(snapshot.provider === "doubao" ? "豆包" : QUICK_OPTIONS.model[0]);
         setRestoredSelection(snapshot.assets.map(a => a.id));
@@ -455,7 +456,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         const newIds = all.filter(a => !assets.some(old => old.id === a.id)).map(a => a.id);
         pending.forEach(a => URL.revokeObjectURL(a.previewUrl)); setStoreItems([]); setDishItems([]);
         if (restoredSelection) setRestoredSelection(ids => [...(ids ?? []), ...newIds]);
-        return { text: brief, replyField, useAi, assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
+        return { text: brief, replyField: null, chat: true, useAi: Boolean(brief.trim()), assetIds: all.filter(a => !excluded.includes(a.id) && (!restoredSelection || restoredSelection.includes(a.id) || newIds.includes(a.id))).map(a => a.id),
           style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string, string>)[style] ?? "appetite",
           provider: model.includes("豆包") ? "doubao" : "qwen" };
       }} />}
@@ -560,7 +561,7 @@ export default function Home() {
       if (activeView === "oneclick") {
         setCoverage(null); setDesignPlan(null); setGenerationTask(null);
         setIntakeSeed({ text: payload.brief, assetIds: savedAssets.map(a => a.id), nonce: crypto.randomUUID() });
-        setBusy(false); notify("资料已保存，请在首页下方集中核对本次创作。", "success"); return true;
+        setBusy(false); notify("收到，我们就在这里接着聊。", "success"); return true;
       }
       const task = await apiRequest<{ task_id: string }>(`/projects/${targetProjectId}/analysis-runs`, jsonRequest("POST", { use_ai: false }));
       setTaskId(task.task_id); setActiveStep(4);

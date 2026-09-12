@@ -55,7 +55,8 @@ def compose_master(background, plan, assets, font_factory):
     texture = ImageOps.contain(background.convert("RGB"), canvas.size, Image.Resampling.LANCZOS)
     layer = canvas.copy()
     layer.paste(texture, ((4000 - texture.width) // 2, (600 - texture.height) // 2))
-    canvas = Image.blend(canvas, layer, .16)
+    illustration = plan.get("render_mode") == "illustration"
+    canvas = Image.blend(canvas, layer, 1 if illustration else .16)
     draw = ImageDraw.Draw(canvas)
     draw.line((40, 30, 3960, 30), fill=accent, width=3)
     draw.line((40, 570, 3960, 570), fill=accent, width=3)
@@ -63,7 +64,7 @@ def compose_master(background, plan, assets, font_factory):
     fitted_text(draw, copy["store_name"], (60, 90, 680, 150), font_factory, ink, 76)
     fitted_text(draw, copy["headline"], (60, 270, 680, 130), font_factory, ink, 52)
     fitted_text(draw, copy["subheadline"], (60, 435, 680, 100), font_factory, accent, 28)
-    dishes = eligible_dishes(assets)[:3]
+    dishes = [] if illustration else eligible_dishes(assets)[:3]
     # Reserve the middle three windows for the same real-material visual language.
     # One dish spans the visual center without inventing extra dishes to fill slots.
     widths = {1: 2200, 2: 1020, 3: 680}
@@ -82,6 +83,10 @@ def compose_master(background, plan, assets, font_factory):
     fitted_text(draw, price, (3260, 135, 680, 170), font_factory, ink, 80)
     fitted_text(draw, copy["headline"], (3260, 330, 680, 110), font_factory, ink, 38)
     fitted_text(draw, copy["subheadline"], (3260, 460, 680, 80), font_factory, accent, 24)
+    if illustration:
+        for index in range(5):
+            draw.rectangle((index * 800 + 20, 535, index * 800 + 245, 580), fill=base)
+            fitted_text(draw, "AI示意 · 非实拍", (index * 800 + 28, 540, 210, 32), font_factory, ink, 24)
     return canvas
 
 

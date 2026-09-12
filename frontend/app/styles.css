@@ -11,6 +11,22 @@
 .intakeReplyLabel { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; margin-bottom: 8px; color: var(--muted); }
 .intakeReplyLabel button { background: transparent; border: 0; min-height: 32px; cursor: pointer; }
 .quickPrompt:has(.intakeReplyLabel) { display: flex; flex-direction: column; }
+.conversationThread { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+.conversationThread:empty { display: none; }
+.quickComposer .conversationThread .inlineFeedback { margin: 0; padding: 8px 4px; }
+.chatMessages { display: flex; flex-direction: column; gap: 12px; }
+.chatMessage { max-width: 100%; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.chatMessage p { margin: 0; white-space: pre-wrap; }
+.chatMessage.user { align-self: flex-end; max-width: 90%; background: var(--surface-subtle); border-radius: 16px 16px 4px 16px; padding: 10px 14px; }
+.chatMessage.assistant { align-self: flex-start; padding: 6px 0; }
+.quickPrompt:has(.chatMessage) textarea { min-height: 88px; margin-top: 12px; }
+.chatUpload { min-height: 44px; border: 1px solid var(--line); border-radius: 22px; padding: 8px 14px; background: var(--surface); color: var(--ink); cursor: pointer; margin-top: 8px; }
+.chatAssetChoices { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.chatAssetChoices small { flex-basis: 100%; color: var(--muted); font-size: 12px; }
+.chatPolicy { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--muted); text-align: right; }
+.generationConsentNote { color: var(--muted); font-size: 12px; }
+.conversationThread .inlineReady { margin-top: 12px; }
+@media (max-width: 640px) { .conversationThread { max-height: 40dvh; } .chatMessage { font-size: 15px; } .quickPrompt textarea { font-size: 16px; } .chatPolicy { text-align: left; } }
 .intakeAiOption { font-size: 12px; color: var(--muted); margin-top: 8px; }.intakeAiOption summary { cursor: pointer; padding: 8px 0; }.intakeAiOption label { display: flex; align-items: center; gap: 8px; min-height: 44px; }.intakeAiOption small { display: block; }
 .inlineReview { max-width: 1280px; margin: -1px auto 24px; padding: 20px 28px; background: var(--surface); border-radius: 0 0 24px 24px; color: var(--ink); font-size: 14px; border-top: 1px solid var(--line); }
 .quickComposer .inlineFeedback { width: auto; max-width: none; margin: 0 24px 16px; padding: 0; background: transparent; border: 0; border-radius: 0; }

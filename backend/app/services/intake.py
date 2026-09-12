@@ -33,7 +33,7 @@ class IntakeInput(BaseModel):
     provider: Literal["qwen", "doubao"] = "qwen"
     use_ai: bool = False
     accepted_understanding_policy: Literal["text-understanding-paid-v1"] | None = None
-    input_mode: Literal["merge", "replace", "reply"] = "merge"
+    input_mode: Literal["merge", "replace", "reply", "chat"] = "merge"
     reply_field: Literal["store_name", "hero_item", "positioning", "selling_points", "hero_price"] | None = None
 
 
@@ -118,12 +118,38 @@ def evaluate(facts, manifest, show_price=False, show_store_name=True, *, asset_l
     return gaps
 
 
+def conversation_reply(gaps, facts):
+    if not gaps:
+        focus = facts.get("hero_item") or facts.get("selling_points") or facts.get("positioning")
+        return f"明白了，就突出{focus}，做成一套连续五图。" if focus else "照片收到了，我会用这些菜品做一套连续五图。"
+    fields = {g["field"] for g in gaps}
+    questions = []
+    if "hero_item" in fields:
+        questions.append("想给什么店做图？说个品类或想突出的内容就行。")
+    if "store_name" in fields:
+        questions.append("图片上写哪个店名？也可以告诉我不放店名。")
+    if "hero_price" in fields:
+        questions.append("价格用多少？不想放价格也可以直接说。")
+    questions.extend(g["question"] for g in gaps if g["kind"] == "conflict")
+    if "assets" in fields:
+        questions.append("发张想放进画面的菜品照片吧。门头我只用来识别，不会放进成品。")
+    return "\n".join(dict.fromkeys(questions))
+
+
 def compile_intake(db, creation, payload):
     if payload.use_ai and not payload.accepted_understanding_policy:
         fail("AI_AUTHORIZATION_REQUIRED", "智能理解需先明确同意本次模型费用，不会自动调用")
     if any(key not in LABELS or len(value) > 500 for key, value in payload.answers.items()):
         fail("INVALID_ANSWERS", "补充字段不支持或内容过长", 422)
     old = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
+    message = payload.text.strip()
+    chat = payload.input_mode == "chat"
+    if chat:
+        previous_text = old.snapshot["text"] if old else ""
+        combined = "\n".join(part for part in (previous_text, message) if part)
+        if len(combined) > 8000:
+            fail("INPUT_TOO_LONG", "这次对话较长，请开始一次新创作；已有内容会保留", 422)
+        payload = payload.model_copy(update={"text": combined})
     manifest = asset_manifest(selected_assets(db, creation.project_id, payload.asset_ids))
     memory = db.scalar(select(FactVersion).where(FactVersion.project_id == creation.project_id, FactVersion.confirmed_at.is_not(None)).order_by(FactVersion.version.desc()))
     facts = {key: value for key, value in (memory.facts if memory else {}).items() if key in LABELS}
@@ -165,8 +191,8 @@ def compile_intake(db, creation, payload):
     show_price = payload.show_price
     show_store = payload.show_store_name if payload.show_store_name is not None else (bool(facts.get("store_name")) if creation.mode == "oneclick" else True)
     if payload.input_mode != "merge":
-        show_price = bool(extracted.get("hero_price")) if payload.input_mode == "replace" else bool(old and old.snapshot["show_price"])
-        show_store = show_store if payload.input_mode == "replace" else bool(old and old.snapshot["show_store_name"])
+        show_price = bool(extracted.get("hero_price")) if payload.input_mode in {"replace", "chat"} else bool(old and old.snapshot["show_price"])
+        show_store = show_store if payload.input_mode in {"replace", "chat"} else bool(old and old.snapshot["show_store_name"])
         if extracted.get("hero_price"):
             show_price = True
         for directive in re.finditer(r"(不展示|不显示|不标注|不写|不放|不要显示|不要展示|不要|展示|显示|标注|放上|写上)\s*(价格|店名)(?:\s*(?:和|与|、)\s*(价格|店名))?", payload.text):
@@ -178,16 +204,39 @@ def compile_intake(db, creation, payload):
         show_price = show_price and (bool(payload.answers) or not re.search(r"不(?:展示|显示|标注|标|写)价格", payload.text))
     if not show_price:
         facts["hero_price"] = ""
+    design_style = payload.style
+    if chat:
+        for clause in re.split(r"[\n；;，,。！!]", text):
+            match = re.fullmatch(r"(?:请|想要|要)?(?:风格)?(?:换成|改成)?(温馨|烟火|简约|清爽|高级|品牌质感|有食欲)(?:一点|一些|风格)?", clause.strip())
+            if match:
+                design_style = {"温馨": "street", "烟火": "street", "简约": "minimal", "清爽": "minimal", "高级": "brand", "品牌质感": "brand", "有食欲": "appetite"}[match[1]]
+    illustration = False
+    if chat:
+        for clause in re.split(r"[\n；;，,。！!]", text):
+            if re.fullmatch(r"(?:请)?(?:使用|做|生成|改成|选择|先做)\s*AI\s*示意图", clause.strip(), re.I):
+                illustration = True
+            elif re.search(r"(?:不用|不要|不做|不使用)(?:使用|做|生成)?\s*AI\s*示意图|使用真实照片", clause, re.I):
+                illustration = False
     gaps = evaluate(facts, manifest, bool(show_price), show_store, asset_led=creation.mode == "oneclick")
+    if illustration:
+        gaps = [g for g in gaps if g["field"] != "assets"]
+        if not any(facts.get(key) for key in ("hero_item", "selling_points", "positioning")) and not any(g["field"] == "hero_item" for g in gaps):
+            gaps.append({"field": "hero_item", "question": "想做什么品类或主题的示意图？", "kind": "text"})
     for key in ("store_name", "hero_item", "selling_points", "positioning", "hero_price"):
         if (key == "store_name" and not show_store) or (key == "hero_price" and not show_price):
             continue
         if re.search(r"或者|还是|不确定|待定|或", str(facts.get(key, ""))):
             gaps.append({"field": key, "question": f"{LABELS[key]}有多个选择，请在原输入框明确本次使用哪一个", "kind": "conflict"})
     changes = [key for key in facts if memory and key in memory.facts and facts[key] != memory.facts[key] and sources.get(key) != "project_confirmed"]
-    return {"schema_version": 2, "text": text, "facts": facts, "sources": sources,
+    messages = list(old.snapshot.get("messages", []) if old else []) if chat else []
+    if chat and old and not messages and old.snapshot["text"]:
+        messages.append({"role": "user", "content": old.snapshot["text"]})
+    if chat:
+        messages.append({"role": "user", "content": message or "使用这些素材做五图"})
+        messages.append({"role": "assistant", "content": conversation_reply(gaps, facts)})
+    return {"schema_version": 2, "text": text, "messages": messages, "render_mode": "illustration" if illustration else "real_assets", "facts": facts, "sources": sources,
             "assets": manifest, "show_price": bool(show_price), "show_store_name": show_store,
-            "style": payload.style, "provider": payload.provider, "gaps": gaps,
+            "style": design_style, "provider": payload.provider, "gaps": gaps,
             "project_changes": changes, "scope": "this_creation_only", "ready": not gaps,
             "interpretation": "ai_grounded_text" if payload.use_ai else "rules_and_user_confirmation", "budget_policy": "local-paid-generation-v1"}
 
