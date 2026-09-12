@@ -86,6 +86,10 @@ def parse_text(text):
     # Conservative clause extraction: accept common explicit expressions, not guessed facts.
     for clause in re.split(r"[\n；;，,。！!]", text):
         clause = clause.strip()
+        # Common short requests should not require a labelled form or another turn.
+        short_name = re.fullmatch(r"(?:请)?(?:帮我|给我|给)?\s*([\u4e00-\u9fffA-Za-z0-9·]{2,24}(?:面馆|餐厅|饭店|火锅店|咖啡店|云饺))(?:做|制作|生成|设计)?(?:一套|一组)?(?:团购|首页)?(?:五连图|五图|5张图|五张图)?", clause)
+        if short_name:
+            values["store_name"] = short_name[1]
         focus = re.fullmatch(r"(?:这次|本次)?(?:想|希望)?(?:突出|主打|强调)\s*(.+)", clause)
         if focus and not re.search(r"^(?:不|待定|不知道)", focus[1]):
             values["selling_points"] = focus[1].strip()
@@ -125,7 +129,7 @@ def conversation_reply(gaps, facts):
         if focus:
             return f"明白了，就突出{focus}，做成一套连续五图。"
         if facts.get("store_name"):
-            return f"可以，给{facts['store_name']}做一套品牌主题五图，不添加没提供的菜品、价格和优惠。"
+            return f"好，给{facts['store_name']}做一套五图。我来安排画面和文案；没有实拍时用AI示意，不编造价格或优惠。"
         return "照片收到了，我会用这些菜品做一套连续五图。"
     fields = {g["field"] for g in gaps}
     questions = []

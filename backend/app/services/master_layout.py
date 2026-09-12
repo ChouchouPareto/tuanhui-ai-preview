@@ -52,7 +52,7 @@ def compose_master(background, plan, assets, font_factory):
     base, ink, accent = PALETTES.get(plan.get("style", {}).get("key"), PALETTES["appetite"])
     canvas = Image.new("RGB", (4000, 600), base)
     # The model only supplies decorative texture, so padding is safer than cropping.
-    texture = ImageOps.contain(background.convert("RGB"), canvas.size, Image.Resampling.LANCZOS)
+    texture = ImageOps.fit(background.convert("RGB"), canvas.size, Image.Resampling.LANCZOS)
     layer = canvas.copy()
     layer.paste(texture, ((4000 - texture.width) // 2, (600 - texture.height) // 2))
     illustration = plan.get("render_mode") == "illustration"
@@ -60,29 +60,34 @@ def compose_master(background, plan, assets, font_factory):
     draw = ImageDraw.Draw(canvas)
     draw.line((40, 30, 3960, 30), fill=accent, width=3)
     draw.line((40, 570, 3960, 570), fill=accent, width=3)
-    copy = plan["copy"]
-    fitted_text(draw, copy["store_name"], (60, 90, 680, 150), font_factory, ink, 76)
-    fitted_text(draw, copy["headline"], (60, 270, 680, 130), font_factory, ink, 52)
-    fitted_text(draw, copy["subheadline"], (60, 435, 680, 100), font_factory, accent, 28)
     dishes = [] if illustration else eligible_dishes(assets)[:3]
-    # Reserve the middle three windows for the same real-material visual language.
-    # One dish spans the visual center without inventing extra dishes to fill slots.
-    widths = {1: 2200, 2: 1020, 3: 680}
-    width = widths.get(len(dishes), 680)
-    for index, asset in enumerate(dishes):
-        center = 800 + (index + .5) * 2400 / len(dishes)
+    # Reuse approved photographs across five complete frames instead of slicing
+    # one plate into disconnected fragments. Never invent additional menu items.
+    for index in range(5 if dishes else 0):
+        asset = dishes[index % len(dishes)]
+        center = index * 800 + 400
         with Image.open(asset.storage_path) as source:
             photo = ImageOps.exif_transpose(source).convert("RGBA")
-            photo = ImageOps.contain(photo, (width, 440), Image.Resampling.LANCZOS)
-        px, py = round(center - photo.width / 2), round(300 - photo.height / 2)
+            photo = ImageOps.contain(photo, (700, 330), Image.Resampling.LANCZOS)
+        px, py = round(center - photo.width / 2), round(205 - photo.height / 2)
         draw.rounded_rectangle((px-9, py-9, px+photo.width+9, py+photo.height+9), radius=20, fill=accent)
         canvas.paste(photo, (px, py), photo)
-    price = copy.get("price", "")
-    if price in {"价格不展示", "待确认"}:
-        price = copy["store_name"]
-    fitted_text(draw, price, (3260, 135, 680, 170), font_factory, ink, 80)
-    fitted_text(draw, copy["headline"], (3260, 330, 680, 110), font_factory, ink, 38)
-    fitted_text(draw, copy["subheadline"], (3260, 460, 680, 80), font_factory, accent, 24)
+    # Render all five planned content regions, not just the two ends.
+    # A dark local gradient gives readable text regardless of the model palette.
+    overlay = Image.new("RGBA", canvas.size)
+    shade = ImageDraw.Draw(overlay)
+    for y in range(350, 600):
+        shade.line((0, y, 4000, y), fill=(12, 15, 18, min(225, int((y - 350) * .8 + 30))))
+    canvas = Image.alpha_composite(canvas.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(canvas)
+    for index, frame in enumerate(plan["frames"]):
+        x = index * 800 + 44
+        fitted_text(draw, frame["headline"], (x, 365, 712, 125), font_factory, "#ffffff", 52)
+        fitted_text(draw, frame.get("support", ""), (x, 490, 712, 42), font_factory, "#f2eadc", 26)
+    # First frame carries a visible brand lockup, not a tiny floating label.
+    if plan["copy"].get("store_name"):
+        draw.rounded_rectangle((32, 42, 768, 185), radius=18, fill=base)
+        fitted_text(draw, plan["copy"]["store_name"], (54, 54, 692, 115), font_factory, ink, 66)
     if illustration:
         for index in range(5):
             draw.rectangle((index * 800 + 20, 535, index * 800 + 245, 580), fill=base)
@@ -92,9 +97,11 @@ def compose_master(background, plan, assets, font_factory):
 
 def save_manifest(output_dir: Path, plan, assets):
     manifest = {
-        "template": "continuous-food-master-v1", "canvas": [4000, 600],
+        "template": plan.get("template_version"), "canvas": [4000, 600],
         "slice_boxes": [[i*800, 0, (i+1)*800, 600] for i in range(5)],
         "style": plan["style"], "copy": plan["copy"],
+        "frames": plan["frames"], "creative_direction": plan.get("creative_direction"),
+        "render_mode": plan.get("render_mode", "real_assets"),
         "asset_ids": [a.id for a in eligible_dishes(assets)[:3]],
         "asset_policy": "product + dish/signature_dish only; storefront/menu excluded",
         "photo_mode": "original-contained; no automatic cutout or invented dishes",
