@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.database import SessionLocal
 from app.services.analysis import recover_analysis_tasks
+from app.services.worker_status import worker_available
 
 
 @asynccontextmanager
@@ -28,7 +29,9 @@ app.include_router(creation_router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "0.5.0", "stage": "M1-rules-internal", "default_flow": "intake-confirmation", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
+    with SessionLocal() as db:
+        ready = worker_available(db)
+    return {"status": "ok", "version": "0.9.3", "generation_worker_ready": ready, "stage": "M1-rules-internal", "default_flow": "intake-confirmation", "analyzer_mode": settings.analyzer_mode, "image_provider": "qwen"}
 
 
 @app.exception_handler(Exception)

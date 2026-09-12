@@ -29,6 +29,19 @@ DASHSCOPE_API_KEY=你的百炼API Key
 
 ## 本地启动
 
+### 一键生图（v0.9.3）
+
+请从本仓库根目录分别启动 API、worker、前端三个进程，避免不同工作目录连接到不同 SQLite 数据库：
+
+```bash
+.venv/bin/python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8011
+PYTHONPATH=backend .venv/bin/python -m app.worker
+```
+
+另一个终端进入 `frontend` 执行 `npm run dev -- --port 3011`，前端 API 地址为 `http://127.0.0.1:8011/api/v1`。
+worker 会领取已经授权、尚未执行的队列任务，不会重试已停止或结果待核对的任务。新确认在 worker 不在线时返回 `WORKER_UNAVAILABLE`，不锁定创作也不入队。
+以下 Stage 2B 说明属于早期流程；一键生图的当前实现包含长图生成与五图裁切。
+
 后端（Python 3.11+）：
 
 ```bash

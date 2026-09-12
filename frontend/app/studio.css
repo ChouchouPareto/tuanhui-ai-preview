@@ -79,6 +79,29 @@ body:has(.studioShell) { overflow: hidden; }
 .studioMessages .m1Options a { min-width: 0; font-size: 13px; }
 .studioMessages .m1Options img { width: 100%; height: auto; border-radius: 10px; display: block; margin-bottom: 8px; }
 .studioResultActions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 20px; }
+.studioResultActions a:not(.primaryButton) { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+.studioResultActions a:not(.primaryButton):hover { background: var(--surface-subtle); }
+.studioPhotoStack .studioUploadCard { background: transparent; border: 0; transform: none; perspective: 400px; isolation: isolate; }
+.studioUploadCard .studioGlassBack, .studioUploadCard .studioGlassFront { position: absolute; inset: 4px 0 8px; border-radius: 16px; z-index: -1; transition: transform 280ms ease; }
+.studioUploadCard .studioGlassBack { background: linear-gradient(135deg,#a78bfacc,#7262af99); transform: rotate(-12deg); box-shadow: 2px 5px 12px #51407920; }
+.studioUploadCard .studioGlassFront { background: #ffffff66; border: 1px solid #ffffffaa; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px #ffffff30; }
+.studioUploadCard:not(.hasPhotos) { color: #3e3456; }
+.studioPhotoPopover { background: rgb(250 250 253 / .65); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-color: #ffffffa0; box-shadow: 0 10px 32px #35245015; }
+.studioPhotoGrid.studioPhotoFan { display: block; position: relative; height: 150px; max-height: none; overflow: visible; padding: 0; margin: 10px 0; }
+.studioFanCard { position: absolute; width: 78px; height: 104px; left: calc(50% - 39px); top: 16px; transform: translate(var(--fan-x),var(--fan-y)) rotate(var(--fan-angle)); transform-origin: center 140%; transition: transform 240ms ease; }
+.studioFanCard .referenceThumbnail { height: 104px; border: 2px solid #fffc; border-radius: 12px; box-shadow: 0 5px 12px #0002; overflow: visible; }
+.studioFanCard:focus-within { z-index: 8; transform: translate(var(--fan-x),-6px) rotate(0); }
+.studioFanPages { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+.studioFanPages button { min-height: 44px; border: 0; border-radius: 8px; background: #ffffff80; padding: 8px; }
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  .studioPhotoStack .studioUploadCard:hover { transform: none; box-shadow: none; }
+  .studioUploadCard:hover .studioGlassBack { transform: rotate(-22deg) translate(-3px,-4px); }
+  .studioUploadCard:hover .studioGlassFront { transform: translateY(-3px); }
+  .studioPhotoPopover:not([hidden]) .studioFanCard { animation: studioFanIn 420ms cubic-bezier(.2,.9,.3,1.15) both; animation-delay: var(--fan-delay); }
+  .studioFanCard:hover { z-index: 8; scale: 1.08; }
+}
+@keyframes studioFanIn { from { opacity: 0; translate: 0 45px; scale: .72; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@media (prefers-reduced-motion:reduce) { .studioFanCard, .studioGlassBack, .studioGlassFront { animation: none !important; transition: none !important; } }
 .oneclickStudio button:focus-visible, .oneclickStudio a:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; }
 @media (hover:hover) and (prefers-reduced-motion:no-preference) {
   .studioUploadCard:hover { transform: rotate(-3deg) scale(1.08); box-shadow: 0 8px 24px rgb(0 0 0 / .1); }

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Creation, CreationConfirmation, DesignPlan, IntakeRevision, StoreProject, WorkflowTask, utc_now
 from app.services.design_plan import build_design_plan
+from app.services.worker_status import worker_available
 from app.services.intake import (CreateInput, IntakeInput, ConfirmInput, asset_manifest, compile_intake,
                                  digest, fail, require_creation, review, selected_assets)
 
@@ -77,6 +78,8 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
     assets = selected_assets(db, project_id, [a["id"] for a in snapshot["assets"]])
     if asset_manifest(assets) != snapshot["assets"]:
         fail("ASSETS_CHANGED", "素材分类或内容已变化，请重新提交资料")
+    if not worker_available(db):
+        fail("WORKER_UNAVAILABLE", "生图服务暂未就绪，需求已保留，尚未启动生图。请稍后再试。", 503)
     changed = db.execute(update(Creation).where(Creation.id == creation_id, Creation.revision == payload.expected_revision, Creation.status == "READY_TO_CONFIRM").values(status="CONFIRMED"))
     if changed.rowcount != 1:
         db.rollback()

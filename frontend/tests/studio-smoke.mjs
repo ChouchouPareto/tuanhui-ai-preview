@@ -66,8 +66,14 @@ try{
  await page.getByRole("button",{name:"查看 4 张照片"}).focus();
  await page.keyboard.press("Enter");
  await page.getByRole("region",{name:"本次照片"}).waitFor();
+ await page.waitForTimeout(650);
  const pop=await page.locator(".studioPhotoPopover").boundingBox();
  assert(pop.x>=0 && pop.x+pop.width<=375 && pop.y>=0);
+ assert.equal(await page.locator(".studioFanCard").count(),4);
+ for (const card of await page.locator(".studioFanCard").all()) {
+   const box=await card.boundingBox();
+   assert(box.y >= pop.y && box.y+box.height <= pop.y+pop.height,"fan photos must stay inside translucent panel");
+ }
  await page.screenshot({path:"/tmp/tuanhui-v091-mobile-photos.png"});
  await page.keyboard.press("Escape");
  assert.equal(await page.locator(".studioPhotoPopover").isVisible(),false);
@@ -80,6 +86,10 @@ try{
  await page.getByRole("button",{name:"同意并开始",exact:true}).click();
  await page.getByRole("heading",{name:"正在生成整张长图"}).waitFor();
  assert.equal(confirms,1);
+ for (const link of await page.locator("a:visible").all()) {
+   assert.equal(await link.evaluate(el=>getComputedStyle(el).textDecorationLine),"none");
+   assert.notEqual(await link.evaluate(el=>getComputedStyle(el).color),"rgb(0, 0, 238)");
+ }
  const bounds=await page.locator(".studioComposer").boundingBox(); assert(bounds.y+bounds.height<=960); assert(bounds.y+bounds.height>900); assert.equal(await page.evaluate(()=>scrollY),0);
  assert(await page.locator(".studioMessages").evaluate(el=>el.scrollHeight>el.clientHeight));
  await page.screenshot({path:"/tmp/tuanhui-v09-chat.png"});

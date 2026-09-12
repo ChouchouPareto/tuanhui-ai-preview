@@ -212,6 +212,9 @@ button { color: inherit; }
 .categoryMenu button small { margin-top: 1px; color: #999; font-size: 8px; font-weight: 500; }
 .categoryMenu button:disabled { opacity: 1; color: #a1a1a4; }
 .primaryButton, .secondaryButton, .ghostButton { min-height: 46px; display: inline-flex; justify-content: center; align-items: center; gap: 8px; padding: 0 19px; border-radius: 13px; font-weight: 680; cursor: pointer; transition: opacity .2s ease, background-color .2s ease, transform .2s ease; }
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: none; }
+.inlineMissing button { text-decoration: none; border-radius: 8px; background: var(--surface-subtle); }
 .primaryButton { border: 1px solid var(--black); background: var(--black); color: white; }
 .primaryButton:hover:not(:disabled) { background: #2a2a2a; transform: translateY(-1px); }
 .secondaryButton { border: 1px solid #d6d6d8; background: white; color: var(--ink); }

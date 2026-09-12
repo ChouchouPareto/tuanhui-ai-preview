@@ -26,5 +26,11 @@ def clean_database():
 
 @pytest.fixture
 def client():
+    # Simulate a ready executor without starting any paid model calls.
+    from app.core.database import SessionLocal
+    from app.models import GenerationWorkerHeartbeat
+    with SessionLocal() as db:
+        db.add(GenerationWorkerHeartbeat(id="test-worker"))
+        db.commit()
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client

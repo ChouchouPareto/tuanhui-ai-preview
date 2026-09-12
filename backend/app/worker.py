@@ -4,11 +4,14 @@ Run from repository root: PYTHONPATH=backend .venv/bin/python -m app.worker
 """
 import threading
 import time
+import uuid
 from datetime import timedelta
 
 from sqlalchemy import select, update
 
 from app.core.database import SessionLocal
+from app.core.database import Base, engine
+from app.models import GenerationWorkerHeartbeat
 from app.models import Creation, CreationConfirmation, DesignPlan, StoreProject, TaskStatus, WorkflowTask, utc_now
 from app.services.image_generation import run_generation
 from app.services.intake import asset_manifest, selected_assets
@@ -80,7 +83,33 @@ def run_once():
     return True
 
 
+def serve():
+    Base.metadata.create_all(engine)
+    worker_id = str(uuid.uuid4())
+    stopped = threading.Event()
+    def announce():
+        with SessionLocal() as db:
+            db.merge(GenerationWorkerHeartbeat(id=worker_id, updated_at=utc_now()))
+            db.commit()
+    def pulse():
+        while not stopped.wait(10):
+            announce()
+    announce()
+    thread = threading.Thread(target=pulse, daemon=True)
+    thread.start()
+    try:
+        while True:
+            if not run_once():
+                time.sleep(2)
+    finally:
+        stopped.set()
+        thread.join(timeout=2)
+        with SessionLocal() as db:
+            record = db.get(GenerationWorkerHeartbeat, worker_id)
+            if record:
+                db.delete(record)
+                db.commit()
+
+
 if __name__ == "__main__":
-    while True:
-        if not run_once():
-            time.sleep(2)
+    serve()

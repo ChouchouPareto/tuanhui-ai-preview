@@ -48,6 +48,22 @@ def test_complete_intake_without_storefront_price_or_model(client):
     assert submit(client, base, asset, expected_revision=1).status_code == 409
 
 
+def test_unavailable_worker_does_not_queue_or_lock_creation(client):
+    from sqlalchemy import delete
+    from app.models import GenerationWorkerHeartbeat, Creation
+    _, asset, base = setup_creation(client)
+    review = submit(client, base, asset).json()
+    with SessionLocal() as db:
+        db.execute(delete(GenerationWorkerHeartbeat))
+        db.commit()
+    response = confirm(client, base, review)
+    assert response.status_code == 503
+    assert "WORKER_UNAVAILABLE" in response.text
+    with SessionLocal() as db:
+        assert db.scalar(select(CreationConfirmation)) is None
+        assert db.get(Creation, review["creation_id"]).status == "READY_TO_CONFIRM"
+
+
 def test_missing_dish_and_no_ai_authorization(client):
     _, asset, base = setup_creation(client, dish=False)
     review = submit(client, base, asset).json()

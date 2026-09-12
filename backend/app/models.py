@@ -26,6 +26,12 @@ class Creation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class GenerationWorkerHeartbeat(Base):
+    __tablename__ = "generation_worker_heartbeats"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class IntakeRevision(Base):
     __tablename__ = "intake_revisions"
     __table_args__ = (UniqueConstraint("creation_id", "revision"), UniqueConstraint("creation_id", "request_key"))
