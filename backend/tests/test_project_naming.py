@@ -1,5 +1,13 @@
 from types import SimpleNamespace
 from app.services.project_naming import update_project_name, five_image_name
+from app.services.project_naming import project_title
+import pytest
+
+
+@pytest.mark.parametrize("direction,label", [("five_panel","五图"),("logo","Logo"),("main_image","主图"),("full_plan","全案")])
+def test_direction_comes_from_task_type(direction, label):
+    assert project_title("测试店", direction) == f"测试店店铺{label}项目"
+    assert project_title("测试店", "unknown") is None
 from test_m1_creations import setup_creation, submit
 
 

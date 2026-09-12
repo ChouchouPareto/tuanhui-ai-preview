@@ -24,6 +24,7 @@ try{
  await page.goto("http://127.0.0.1:3011/");
  await page.getByRole("heading",{name:"今天，想为门店做什么图？"}).waitFor();
  assert.equal(await page.locator(".quickAssetRail").count(),0);
+ assert.equal(await page.locator(".studioHeader > span").textContent(),"从一个想法，开始门店设计");
  const input=page.getByRole("textbox",{name:"创作需求"});
  await input.fill("袁记云饺，五图");
  await page.getByRole("button",{name:"创作",exact:true}).click();

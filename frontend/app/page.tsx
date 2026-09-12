@@ -432,7 +432,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
       }} />;
   const workbench = sessionStarted || Boolean(intakeSeed || conversationText || generationTask);
   if (mode === "oneclick") return <section className={`oneclickStudio ${workbench ? "isWorking" : "isWelcome"}`} aria-label="一键生图工作区">
-    <header className="studioHeader"><span>{projectName || "新建创作"}</span><div><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")}>素材与设置</button><a href={projectId ? `/?project=${projectId}&compose=1` : "/"}>新建创作</a></div></header>
+    <header className="studioHeader"><span title={projectId ? projectName : undefined}>{projectId ? projectName || "正在整理项目名称…" : "从一个想法，开始门店设计"}</span><div><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")}>素材与设置</button><a href={projectId ? `/?project=${projectId}&compose=1` : "/"}>新建创作</a></div></header>
     <div className="studioWelcome" hidden={workbench}>
       <div className="creationTypeTabs" aria-label="创作模式"><button type="button" onClick={onOpenProfessional}>创作</button><button type="button" className="active" aria-current="page" onClick={onOpenOneClick}>一键生图</button><button type="button" disabled title="全案设计暂未开放">全案设计</button></div>
       <h1>今天，想为门店做什么图？</h1><p>说一句想法，或放几张照片。设计交给团绘。</p>
