@@ -8,7 +8,7 @@ import { canConfirmDraft, draftKey, DraftInput } from "../lib/intake-state";
 
 export type IntakeSeed = { text: string; assetIds: string[]; nonce: string };
 export type Snapshot = { render_mode?: string; messages?: { role: string; content: string }[]; schema_version?: number; text: string; facts: Record<string, string | string[]>; sources: Record<string, string>; assets: { id: string; name: string; usage: string }[]; show_price: boolean; show_store_name: boolean; style: string; provider: string; gaps: { field: string; question: string; kind: string }[]; ready: boolean; project_changes: string[] };
-type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string };
+type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; project_name?: string };
 type Task = { id: string; status: string; progress: number; result: { long_image?: string; slices?: string[] }; error?: { code: string; message: string } };
 export type IntakeController = { revise: () => Promise<void>; pause: () => Promise<void> };
 type Props = { autoGenerate?: () => boolean; onGenerationActive?: (active: boolean) => void; target: HTMLElement | null; controller: Ref<IntakeController>; projectId: string; seed: IntakeSeed | null; draft: DraftInput; prepare: () => Promise<DraftInput>; onRestore: (snapshot: Snapshot) => void; onReply: (field?: string) => void; onAssets: () => void; onBusy: (busy: boolean) => void };
@@ -30,6 +30,7 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
   useEffect(() => { if (target) target.scrollTop = target.scrollHeight; }, [target, review?.revision, task?.status]);
   function apply(next: Review, restore = false) {
     reviewRef.current = next; setReview(next);
+    if (next.project_name) window.dispatchEvent(new CustomEvent("tuanhui:project-renamed", {detail: {projectId, name: next.project_name}}));
     if (restore && next.snapshot) callbacks.current.onRestore(next.snapshot);
   }
   function report(e: unknown) { setError(e instanceof Error ? e.message : "未能保存，请重试"); setTimeout(() => errorRef.current?.focus(), 0); }

@@ -380,7 +380,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
     if (mode === "professional" && !name) { setError("请在文字中写明“门店名称：×××”"); return; }
     if (mode === "professional" && !savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
     setError("");
-    const saved = await onSubmit({ name: name || "未命名门店项目", brief: mode === "oneclick" ? brief.trim() : `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
+    const saved = await onSubmit({ name: name || "店铺五图项目", brief: mode === "oneclick" ? brief.trim() : `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
     if (saved) { [...storeItems, ...dishItems].forEach((item) => URL.revokeObjectURL(item.previewUrl)); setStoreItems([]); setDishItems([]); }
   }
 
@@ -554,6 +554,14 @@ export default function Home() {
   const [intakeSeed, setIntakeSeed] = useState<IntakeSeed | null>(null);
   const [projectId, setProjectId] = useState(""); const [projectName, setProjectName] = useState(""); const [taskId, setTaskId] = useState(""); const [assets, setAssets] = useState<Asset[]>([]); const [coverage, setCoverage] = useState<Coverage | null>(null); const [designPlan, setDesignPlan] = useState<DesignPlan | null>(null); const [generationTask, setGenerationTask] = useState<GenerationTask | null>(null); const [message, setMessage] = useState("把门店资料和创作要求一次发给我。"); const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info"); const [busy, setBusy] = useState(false); const [activeStep, setActiveStep] = useState<Step>(1); const [activeView, setActiveView] = useState<WorkspaceView>("oneclick"); const [libraryTab, setLibraryTab] = useState<LibraryTab>("store"); const [sidebarOpen, setSidebarOpen] = useState(false); const libraryReturnView = useRef<CreationView>("oneclick");
   useEffect(() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }, [activeStep, activeView]);
+  useEffect(() => {
+    const renamed = (event: Event) => {
+      const detail = (event as CustomEvent<{projectId: string; name: string}>).detail;
+      if (detail?.projectId === projectId && detail.name) setProjectName(detail.name);
+    };
+    window.addEventListener("tuanhui:project-renamed", renamed);
+    return () => window.removeEventListener("tuanhui:project-renamed", renamed);
+  }, [projectId]);
   useEffect(() => { const params = new URLSearchParams(window.location.search); const savedProjectId = params.get("project"); const savedTaskId = params.get("task"); if (!savedProjectId) return; void (async () => { setBusy(true); try { const [project, savedAssets] = await Promise.all([apiRequest<ProjectInfo>(`/projects/${savedProjectId}`), apiRequest<Asset[]>(`/projects/${savedProjectId}/assets`)]); setProjectId(project.id); setProjectName(project.name); setAssets(savedAssets); if (params.get("compose") === "1") { setActiveStep(1); setActiveView("oneclick"); notify("已保留项目素材，请填写这一次的新需求。", "success"); return; } if (params.get("creation")) { setActiveView("oneclick"); setActiveStep(1); return; } try { const plan = await apiRequest<DesignPlan>(`/projects/${savedProjectId}/design-plans/latest`); setDesignPlan(plan); setActiveStep(plan.status === "CONFIRMED" ? 6 : 5); } catch { setActiveStep(savedAssets.some((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)) ? 3 : 2); } if (savedTaskId) { const task = await apiRequest<GenerationTask>(`/tasks/${savedTaskId}`); setTaskId(task.id); setGenerationTask(task); setActiveStep(6); if (task.status === "PENDING" || task.status === "RUNNING") window.setTimeout(() => void pollGeneration(task.id), 700); } notify("已恢复上次的项目和生成状态。", "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } })(); }, []);
   const hasStoreAssets = assets.some((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)); const maxStep: Step = designPlan?.status === "CONFIRMED" ? 6 : designPlan ? 5 : coverage || taskId ? 4 : hasStoreAssets ? 3 : projectId ? 2 : 1; const factText = (key: string) => Array.isArray(coverage?.facts[key]) ? (coverage?.facts[key] as string[]).join("、") : String(coverage?.facts[key] ?? "待确认");
   function notify(text: string, tone: "info" | "success" | "error" = "info") { setMessage(text); setMessageTone(tone); }

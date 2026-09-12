@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 from sqlalchemy import select
 
-from app.models import Creation, FactVersion, IntakeRevision, SourceAsset
+from app.models import Creation, FactVersion, IntakeRevision, SourceAsset, StoreProject
 
 
 LABELS = {"store_name": "店名", "hero_item": "本次重点", "positioning": "门店特色", "selling_points": "真实卖点", "hero_price": "价格"}
@@ -255,5 +255,5 @@ def compile_intake(db, creation, payload):
 
 def review(db, creation):
     item = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
-    return {"creation_id": creation.id, "revision": creation.revision, "status": creation.status,
+    return {"creation_id": creation.id, "revision": creation.revision, "status": creation.status, "project_name": db.get(StoreProject, creation.project_id).name,
             "snapshot_hash": item.snapshot_hash if item else "", "snapshot": item.snapshot if item else None}

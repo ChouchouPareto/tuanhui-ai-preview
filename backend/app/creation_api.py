@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.models import Creation, CreationConfirmation, DesignPlan, IntakeRevision, StoreProject, WorkflowTask, utc_now
 from app.services.design_plan import build_design_plan
 from app.services.worker_status import worker_available
+from app.services.project_naming import update_project_name
 from app.services.intake import (CreateInput, IntakeInput, ConfirmInput, asset_manifest, compile_intake,
                                  digest, fail, require_creation, review, selected_assets)
 
@@ -48,11 +49,14 @@ def intake(project_id: str, creation_id: str, payload: IntakeInput,
     if creation.revision != payload.expected_revision:
         fail("STALE_REVISION", "资料已更新，请刷新后重新检查")
     snapshot = compile_intake(db, creation, payload)
+    previous_revision = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
     next_revision = creation.revision + 1
     changed = db.execute(update(Creation).where(Creation.id == creation_id, Creation.revision == payload.expected_revision, Creation.status != "CONFIRMED").values(revision=next_revision, status="READY_TO_CONFIRM" if snapshot["ready"] else "NEEDS_INPUT"))
     if changed.rowcount != 1:
         db.rollback()
         fail("STALE_REVISION", "资料已更新，请刷新后重新检查")
+    if creation.mode == "oneclick":
+        update_project_name(db.get(StoreProject, project_id), snapshot, previous_revision.snapshot if previous_revision else None)
     db.add(IntakeRevision(creation_id=creation_id, revision=next_revision, request_key=idempotency_key,
                          request_hash=request_hash, snapshot=snapshot, snapshot_hash=digest(snapshot)))
     db.commit()
