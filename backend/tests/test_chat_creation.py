@@ -81,3 +81,21 @@ def test_style_reply_changes_plan_without_reasking_name(client):
     assert review["snapshot"]["ready"]
     assert review["snapshot"]["style"] == "street"
     assert review["snapshot"]["facts"]["selling_points"] == "家庭聚餐"
+
+
+def test_brand_only_illustration_does_not_repeat_store_question(client, monkeypatch):
+    from app.services import intake_understanding
+    _, asset, base = setup_creation(client)
+    monkeypatch.setattr(intake_understanding, "understand", lambda *args: {"facts": {"store_name": "袁记云饺"}, "uncertain_fields": []})
+    for revision, text in enumerate(["袁记云饺", "使用AI示意图", "袁记云饺，五图"]):
+        review = submit(client, base, asset, asset_ids=[], text=text, input_mode="chat", expected_revision=revision, use_ai=True, accepted_understanding_policy="text-understanding-paid-v1").json()
+        assert "想给什么店" not in review["snapshot"]["messages"][-1]["content"]
+        if revision:
+            assert review["snapshot"]["ready"]
+            assert not review["snapshot"]["gaps"]
+            assert not review["snapshot"]["facts"].get("hero_item")
+    assert confirm(client, base, review).status_code == 200
+    with SessionLocal() as db:
+        plan = db.scalar(select(DesignPlan)).plan
+        assert plan["copy"]["store_name"] == "袁记云饺"
+        assert "不能根据品牌名称猜测菜单" in build_visual_prompt(plan)

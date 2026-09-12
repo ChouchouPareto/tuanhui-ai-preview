@@ -121,11 +121,18 @@ def evaluate(facts, manifest, show_price=False, show_store_name=True, *, asset_l
 def conversation_reply(gaps, facts):
     if not gaps:
         focus = facts.get("hero_item") or facts.get("selling_points") or facts.get("positioning")
-        return f"明白了，就突出{focus}，做成一套连续五图。" if focus else "照片收到了，我会用这些菜品做一套连续五图。"
+        if focus:
+            return f"明白了，就突出{focus}，做成一套连续五图。"
+        if facts.get("store_name"):
+            return f"可以，给{facts['store_name']}做一套品牌主题五图，不添加没提供的菜品、价格和优惠。"
+        return "照片收到了，我会用这些菜品做一套连续五图。"
     fields = {g["field"] for g in gaps}
     questions = []
     if "hero_item" in fields:
-        questions.append("想给什么店做图？说个品类或想突出的内容就行。")
+        if not facts.get("store_name"):
+            questions.append("想给什么店做图？说个品类或想突出的内容就行。")
+        elif "assets" not in fields:
+            questions.append("这次想突出什么？也可以先做品牌主题。")
     if "store_name" in fields:
         questions.append("图片上写哪个店名？也可以告诉我不放店名。")
     if "hero_price" in fields:
@@ -220,7 +227,9 @@ def compile_intake(db, creation, payload):
     gaps = evaluate(facts, manifest, bool(show_price), show_store, asset_led=creation.mode == "oneclick")
     if illustration:
         gaps = [g for g in gaps if g["field"] != "assets"]
-        if not any(facts.get(key) for key in ("hero_item", "selling_points", "positioning")) and not any(g["field"] == "hero_item" for g in gaps):
+        if facts.get("store_name"):
+            gaps = [g for g in gaps if g["field"] != "hero_item"]
+        if not any(facts.get(key) for key in ("store_name", "hero_item", "selling_points", "positioning")) and not any(g["field"] == "hero_item" for g in gaps):
             gaps.append({"field": "hero_item", "question": "想做什么品类或主题的示意图？", "kind": "text"})
     for key in ("store_name", "hero_item", "selling_points", "positioning", "hero_price"):
         if (key == "store_name" and not show_store) or (key == "hero_price" and not show_price):
