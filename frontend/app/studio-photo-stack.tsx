@@ -36,7 +36,7 @@ export function StudioPhotoStack({ photos, children, onAdd, disabled }: {
       disabled={disabled} onClick={() => { if (photos.length) setOpen(value => !value); else onAdd(); }}>
       <span className="studioGlassBack" aria-hidden="true" /><span className="studioGlassFront" aria-hidden="true" />
       {photos.slice(0, 3).map((photo, index) => <span className="studioStackImage" key={photo.id} style={{ transform: `translate(${index * 4}px, ${-index * 4}px) rotate(${index * 5}deg)`, zIndex: 3 - index }}><Image src={photo.src} alt="" fill unoptimized sizes="72px" /></span>)}
-      {photos.length ? <small className="studioPhotoCount">{photos.length} 张</small> : <><span aria-hidden="true">＋</span><small>加照片</small></>}
+      {photos.length ? <small className="studioPhotoCount">{photos.length} 张</small> : <svg className="studioUploadPlus" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>}
     </button>
     <div id={panelId} className="studioPhotoPopover" hidden={!expanded} role="region" aria-label="本次照片">
       <header><span>{photos.length} 张照片</span><button type="button" disabled={disabled} onClick={onAdd}>＋ 添加</button><button type="button" aria-label="收起照片" onClick={() => { setOpen(false); trigger.current?.focus(); }}>×</button></header>

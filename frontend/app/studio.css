@@ -28,7 +28,7 @@ body:has(.studioShell) { overflow: hidden; }
 .studioComposer { width: min(960px,100%); flex-shrink: 0; margin: 0 auto; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); padding: 24px; }
 .studioInputRow { display: flex; align-items: flex-start; gap: 24px; min-width: 0; }
 .studioUploadCard { flex: 0 0 72px; height: 92px; border: 1px solid #d9d9dd; border-radius: 10px; background: #eeeef1; color: #62626a; transform: rotate(-8deg); transition: transform 180ms ease, box-shadow 180ms ease; display: flex; align-items: center; justify-content: center; flex-direction: column; cursor: pointer; }
-.studioUploadCard span { font-size: 32px; line-height: 1.1; }
+.studioUploadCard .studioUploadPlus { width: 24px; height: 24px; flex-shrink: 0; }
 .studioUploadCard small { font-size: 12px; margin-top: 8px; }
 .studioInput { display: block; flex: 1; min-width: 0; }
 .studioInput textarea { display: block; width: 100%; height: 100px; max-height: 140px; resize: none; overflow-y: auto; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 17px; line-height: 1.6; outline-offset: 6px; }

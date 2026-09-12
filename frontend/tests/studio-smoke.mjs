@@ -32,6 +32,10 @@ try{
  await page.getByRole("tab",{name:"一键生图",exact:true}).click();
  assert.equal(await page.getByRole("textbox",{name:"创作需求"}).inputValue(),"袁记云饺，五图");
  const card=page.getByRole("button",{name:"添加照片",exact:true});
+ assert.equal((await card.textContent()).trim(), "", "empty upload card must have no visible label");
+ assert.equal(await card.locator("svg").getAttribute("stroke-width"), "1.5");
+ assert.equal(await card.locator("svg").evaluate(el => getComputedStyle(el).width), "24px");
+ await page.screenshot({path:"/tmp/tuanhui-upload-plus-desktop.png"});
  const before=await page.locator(".studioComposer").boundingBox(); await card.hover(); await page.waitForTimeout(220);
  assert(before.y < 380, "welcome composer should not be vertically centered with excessive whitespace");
  assert(!(await input.getAttribute("placeholder")).includes("袁记"));
