@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { M1Review, IntakeSeed, IntakeController } from "./m1-review";
 import { ReferenceCategory, ReferenceThumbnail } from "./reference-thumbnail";
+import { StudioPhotoStack } from "./studio-photo-stack";
 import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest, apiUrl, jsonRequest } from "../lib/api-client";
 import { Asset, Coverage, Facts, MenuProduct, StoreNameCandidate } from "../features/store-intake/types";
@@ -447,10 +448,9 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
       setSessionStarted(true); void submit(event);
     }} aria-busy={busy || reviewBusy}>
       <div className="studioInputRow">
-        <button type="button" className="studioUploadCard" aria-label="添加照片" disabled={busy || reviewBusy} onClick={() => dishInputRef.current?.click()}><span aria-hidden="true">＋</span><small>加照片</small></button>
-        <label className="studioInput"><span className="srOnly">创作需求</span><textarea ref={promptRef} value={brief} disabled={busy || reviewBusy} maxLength={8000} rows={3} placeholder={workbench ? "接着说，或者告诉我哪里想改。" : "比如：给袁记云饺做一套团购五连图，清爽一点"} onChange={e => { setBrief(e.target.value); setError(""); }} /></label>
+        <StudioPhotoStack photos={[...selectedSaved.map(({asset}) => ({id: asset.id, src: apiUrl(asset.preview_path!)})), ...localAssets.map(item => ({id: item.id, src: item.previewUrl}))]} disabled={busy || reviewBusy} onAdd={() => dishInputRef.current?.click()}>{assetGroup("store")}{assetGroup("dish")}</StudioPhotoStack>
+        <label className="studioInput"><span className="srOnly">创作需求</span><textarea ref={promptRef} value={brief} disabled={busy || reviewBusy} maxLength={8000} rows={3} placeholder={workbench ? "接着说，或者告诉我哪里想改。" : "想做什么图？说一句想法，或添加几张参考照片。"} onChange={e => { setBrief(e.target.value); setError(""); }} /></label>
       </div>
-      {(localAssets.length > 0 || selectedSaved.length > 0) && <div className="studioAttachments" aria-label="本次照片">{assetGroup("store")}{assetGroup("dish")}</div>}
       <footer className="studioToolbar"><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")} aria-expanded={!!assetDialog}>五连图 · {style === "智能匹配" ? "自动风格" : style}</button><button className="studioPrimary" type="submit" disabled={busy || reviewBusy}>{generationActive ? "停止生成" : busy || reviewBusy ? "正在理解…" : workbench ? "发送" : "开始生成"}</button></footer>
       <p className="studioPolicy">无实拍可做 AI 示意图；门头仅用于识别，不放进成品。</p>
       {(error || messageTone === "error") && <p className="studioHint" role="alert">{error || message}</p>}
