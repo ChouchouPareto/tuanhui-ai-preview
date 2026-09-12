@@ -42,6 +42,14 @@ try{
  assert.equal(await page.locator(".studioUploadCard .studioStackImage").count(),1);
  await page.screenshot({path:"/tmp/tuanhui-v091-photos.png"});
  await page.waitForTimeout(600);
+ // A focused control must not pin a mouse-opened photo panel on screen.
+ await page.getByRole("button",{name:"移除 smoke-photo.png",exact:true}).focus();
+ await page.mouse.move(1300,100);
+ assert.equal(await page.locator(".studioPhotoPopover").isVisible(),false);
+ await page.getByRole("button",{name:"查看 1 张照片"}).hover();
+ const removeStyle=await page.getByRole("button",{name:"移除 smoke-photo.png",exact:true}).evaluate(el=>({background:getComputedStyle(el).backgroundColor, icon:getComputedStyle(el,"::after").width}));
+ assert.equal(removeStyle.background,"rgba(0, 0, 0, 0)");
+ assert.equal(removeStyle.icon,"12px");
  await page.getByRole("button",{name:"预览 smoke-photo.png",exact:true}).hover();
  await page.getByRole("button",{name:"移除 smoke-photo.png",exact:true}).click();
  assert.equal(await page.locator(".studioPhotoGrid .referenceThumbnail").count(),0);

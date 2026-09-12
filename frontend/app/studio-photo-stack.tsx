@@ -20,7 +20,7 @@ export function StudioPhotoStack({ photos, children, onAdd, disabled }: {
   }, []);
   return <div ref={root} className="studioPhotoStack"
     onPointerEnter={event => { if (event.pointerType === "mouse") setOpen(true); }}
-    onPointerLeave={() => { if (!root.current?.querySelector("dialog[open]") && !root.current?.contains(document.activeElement)) setOpen(false); }}
+    onPointerLeave={event => { if (event.pointerType === "mouse" && !root.current?.querySelector("dialog[open]")) setOpen(false); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
     onKeyDown={event => { if (event.key === "Escape" && !root.current?.querySelector("dialog[open]")) { setOpen(false); trigger.current?.focus(); } }}>
     <button ref={trigger} type="button" className={`studioUploadCard ${photos.length ? "hasPhotos" : ""}`}

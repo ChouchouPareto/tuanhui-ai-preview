@@ -52,7 +52,10 @@ body:has(.studioShell) { overflow: hidden; }
 .studioPhotoPopover header button { border: 0; border-radius: 8px; background: #f4f4f6; min-height: 44px; min-width: 44px; padding: 8px; }
 .studioPhotoGrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; max-height: 180px; overflow-y: auto; padding: 10px 2px 2px; }
 .studioPhotoGrid .referenceThumbnail { width: 100%; height: 80px; min-height: 0; }
-.studioPhotoGrid .referenceThumbnailRemove { width: 44px; height: 44px; min-height: 44px; }
+.studioPhotoGrid .referenceThumbnailRemove { width: 44px; height: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: #303036; font-size: 0; }
+.studioPhotoGrid .referenceThumbnailRemove::before { content: ""; position: absolute; width: 24px; height: 24px; border-radius: 6px; background: rgb(255 255 255 / .94); }
+.studioPhotoGrid .referenceThumbnailRemove::after { content: ""; position: absolute; width: 12px; height: 12px; background: linear-gradient(45deg,transparent 46%,currentColor 46%,currentColor 54%,transparent 54%),linear-gradient(-45deg,transparent 46%,currentColor 46%,currentColor 54%,transparent 54%); }
+.studioPhotoGrid .referenceThumbnailRemove:hover::before { background: #fff; box-shadow: 0 1px 4px #0002; }
 .isWelcome .studioInput textarea { height: 80px; }
 .studioSettings { position: absolute; right: 0; top: 80px; width: min(440px,100%); max-height: calc(100% - 100px); overflow-y: auto; z-index: 30; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); border-radius: 20px; padding: 24px; }
 .studioSettings header { display: flex; justify-content: space-between; align-items: center; }
