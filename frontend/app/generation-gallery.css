@@ -1,0 +1,27 @@
+.generationGallery { width: 100%; min-width: 0; }
+.generationGalleryGrid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 16px 12px; }
+.generationGalleryGrid figure { margin: 0; min-width: 0; }
+.generationGalleryLong { grid-column: 1 / -1; }
+.generationPreviewButton { display: block; width: 100%; border: 0; padding: 0; background: none; border-radius: 12px; cursor: zoom-in; }
+.generationPreviewButton img { display: block; width: 100%; height: auto; border-radius: 12px; }
+.generationGallery figcaption { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+.generationGallery figcaption a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; color: #242424; text-decoration: none; }
+.generationPreviewDialog { border: 0; padding: 0; background: transparent; width: min(1280px,calc(100vw - 32px)); max-width: none; max-height: 94dvh; color: #222; }
+.generationPreviewDialog::backdrop { background: rgb(0 0 0 / 65%); }
+.generationPreviewPanel { border-radius: 20px; overflow: hidden; background: #fff; }
+.generationPreviewPanel header, .generationPreviewPanel footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 20px; }
+.generationPreviewPanel header > div { display: flex; align-items: center; gap: 8px; }
+.generationPreviewPanel button, .generationPreviewPanel a { display: inline-flex; justify-content: center; align-items: center; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; background: #f3f3f5; border-radius: 10px; color: #222; text-decoration: none; cursor: pointer; font: inherit; font-size: 14px; }
+.generationPreviewPanel button:hover, .generationPreviewPanel a:hover { background: #e8e8ec; }
+.generationPreviewPanel footer { justify-content: center; gap: 24px; font-size: 13px; }
+.generationPreviewStage { height: min(65dvh,720px); overflow: auto; display: flex; align-items: center; justify-content: center; background: #f4f4f6; padding: 16px; }
+.generationPreviewStage img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.generationPreviewStage.isZoomed { display: block; }
+.generationPreviewStage.isZoomed img { max-width: none; max-height: none; width: auto; height: auto; }
+.generationGallery :is(button,a):focus-visible { outline: 2px solid #7953dc; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .generationGalleryGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .generationPreviewPanel header { flex-wrap: wrap; padding: 12px; }
+  .generationPreviewPanel header strong { font-size: 14px; }
+  .generationPreviewStage { height: 55dvh; padding: 8px; }
+}
