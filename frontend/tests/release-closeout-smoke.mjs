@@ -31,7 +31,9 @@ await page.route("**/api/v1/**",async route=>{
 try{
   await page.goto("http://127.0.0.1:3011/");
   await page.getByRole("heading",{name:"今天，想为门店做什么图？"}).waitFor();
-  await page.getByRole("button",{name:"全案设计",exact:true}).click();
+  await page.locator(".creationTypeTabs").getByRole("button",{name:"全案设计",exact:true}).click();
+  await page.waitForURL("**/full-plan");
+  await page.getByRole("region",{name:"全案设计工作区",exact:true}).waitFor();
   await page.getByRole("textbox",{name:"创作需求"}).fill("给测试面馆做全案");
   await page.getByRole("button",{name:"开始生成",exact:true}).click();
   await page.getByRole("button",{name:"同意并开始",exact:true}).click();
@@ -52,6 +54,12 @@ try{
   await page.reload();
   await page.getByRole("heading",{name:"1. 代金券主图",exact:true}).waitFor();
   assert.equal(confirms,1,"refresh must not generate again");
+  assert(new URL(page.url()).pathname === "/full-plan");
+  assert((await page.getByRole("link",{name:"继续下一次创作",exact:true}).getAttribute("href")).startsWith("/full-plan?"));
+  await page.goto("http://127.0.0.1:3011/?project=batch-project&creation=batch-creation");
+  await page.waitForURL("**/full-plan?project=batch-project&creation=batch-creation");
+  await page.getByRole("heading",{name:"1. 代金券主图",exact:true}).waitFor();
+  assert.equal(confirms,1,"legacy batch links migrate without a second generation");
   await page.setViewportSize({width:375,height:812});
   await page.screenshot({path:"/tmp/tuanhui-closeout-batch-mobile.png"});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

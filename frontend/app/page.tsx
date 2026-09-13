@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { StudioOutputPicker } from "./studio-output-picker";
 import { GenerationGallery } from "./generation-gallery";
 import { M1Review, IntakeSeed, IntakeController } from "./m1-review";
 import { ReferenceCategory, ReferenceThumbnail } from "./reference-thumbnail";
@@ -11,7 +13,7 @@ import { apiRequest, apiUrl, jsonRequest } from "../lib/api-client";
 import { Asset, Coverage, Facts, MenuProduct, StoreNameCandidate } from "../features/store-intake/types";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
-type CreationView = "oneclick" | "professional";
+type CreationView = "oneclick" | "professional" | "fullplan";
 type WorkspaceView = CreationView | "library";
 type LibraryTab = "store" | "dish";
 type IconName = "spark" | "folder" | "image" | "book" | "history" | "menu" | "close" | "plus" | "arrow" | "check" | "store" | "upload" | "chat" | "help" | "user" | "pause" | "play" | "retry";
@@ -62,7 +64,7 @@ function BrandLogo({ onActivate }: { onActivate: () => void }) {
 function Sidebar({ open, onClose, projectName, activeView, onNavigate }: { open: boolean; onClose: () => void; projectName: string; activeView: WorkspaceView; onNavigate: (view: WorkspaceView) => void }) {
   return <><button className={`sidebarScrim ${open ? "isOpen" : ""}`} aria-label="关闭导航" onClick={onClose} /><aside className={`sidebar ${open ? "isOpen" : ""}`} aria-label="主导航">
     <div className="brandRow"><BrandLogo onActivate={() => onNavigate("oneclick")} /><button className="iconButton mobileOnly" aria-label="关闭导航" onClick={onClose}><Icon name="close" /></button></div>
-    <nav className="primaryNav" aria-label="主导航"><button className={`navItem ${activeView === "oneclick" ? "active" : ""}`} type="button" aria-current={activeView === "oneclick" ? "page" : undefined} onClick={() => onNavigate("oneclick")}><Icon name="image" /><span>一键生图</span><span className="navBadge">NEW</span></button><button className={`navItem ${activeView === "professional" ? "active" : ""}`} type="button" aria-current={activeView === "professional" ? "page" : undefined} onClick={() => onNavigate("professional")}><Icon name="book" /><span>专业创作</span></button><button className="navItem" type="button" disabled title="装修全案将在后续付费版本开放"><Icon name="chat" /><span>装修全案</span></button><div className="navDivider" /><a className="navItem" href="/projects"><Icon name="folder" /><span>我的项目</span></a><button className={`navItem ${activeView === "library" ? "active" : ""}`} type="button" aria-current={activeView === "library" ? "page" : undefined} onClick={() => onNavigate("library")}><Icon name="image" /><span>素材库</span></button></nav>
+    <nav className="primaryNav" aria-label="主导航"><button className={`navItem ${activeView === "oneclick" ? "active" : ""}`} type="button" aria-current={activeView === "oneclick" ? "page" : undefined} onClick={() => onNavigate("oneclick")}><Icon name="image" /><span>一键生图</span><span className="navBadge">NEW</span></button><button className={`navItem ${activeView === "professional" ? "active" : ""}`} type="button" aria-current={activeView === "professional" ? "page" : undefined} onClick={() => onNavigate("professional")}><Icon name="book" /><span>专业创作</span></button><button className={`navItem ${activeView === "fullplan" ? "active" : ""}`} type="button" aria-current={activeView === "fullplan" ? "page" : undefined} onClick={() => onNavigate("fullplan")}><Icon name="chat" /><span>全案设计</span></button><div className="navDivider" /><a className="navItem" href="/projects"><Icon name="folder" /><span>我的项目</span></a><button className={`navItem ${activeView === "library" ? "active" : ""}`} type="button" aria-current={activeView === "library" ? "page" : undefined} onClick={() => onNavigate("library")}><Icon name="image" /><span>素材库</span></button></nav>
     <div className="navDivider" /><section className="historySection" aria-labelledby="history-title"><div className="sectionTitle"><span id="history-title">创作历史</span><Icon name="history" size={17} /></div>{projectName ? <button className="historyItem" type="button" onClick={() => { const id = new URLSearchParams(window.location.search).get("project"); window.location.assign(id ? `/projects?project=${encodeURIComponent(id)}` : "/projects"); }}><span className="historyThumb"><Icon name="store" size={18} /></span><span><b>{projectName}</b><small>查看项目与创作记录</small></span></button> : <p className="emptyHistory">创建门店后，当前项目会显示在这里。</p>}</section>
     <div className="sidebarFooter"><span className="avatar"><Icon name="user" size={17} /></span><span><b>测试用户</b><small>团绘AI 内测</small></span><a className="iconButton" aria-label="查看使用说明" href="#guide"><Icon name="help" /></a></div>
   </aside></>;
@@ -303,7 +305,9 @@ function QuickSelectMenu({ menuKey, label, value, options, openMenu, onOpenMenu,
 
 function QuickCreationHome({ mode, projectId, projectName, assets, coverage, generationTask, busy, message, messageTone, onSubmit, onOpenOneClick, onOpenProfessional, onOpenLibrary, intakeSeed, onPrepareAssets }: { mode: CreationView; projectId: string; projectName: string; assets: Asset[]; coverage: Coverage | null; generationTask: GenerationTask | null; designPlan: DesignPlan | null; busy: boolean; message: string; messageTone: "info" | "success" | "error"; onSubmit: (payload: ConversationIntakePayload) => Promise<boolean>; onSubmitFacts: (event: FormEvent<HTMLFormElement>) => void; onConfirmAndGenerate: (style: string, model: string) => void; onGenerateExisting: () => void; onOpenOneClick: () => void; onOpenProfessional: () => void; onOpenLibrary: (tab: LibraryTab) => void; onPause: () => void; intakeSeed?: IntakeSeed | null; onPrepareAssets?: (items: PendingUpload[]) => Promise<Asset[]> }) {
   const [brief, setBrief] = useState("");
-  const [outputType, setOutputType] = useState("five_panel");
+  const [outputType, setOutputType] = useState(mode === "fullplan" ? "full_plan" : "five_panel");
+  const fullPlan = mode === "fullplan";
+  const openFullPlan = () => { window.location.assign(`/full-plan${projectId ? `?project=${projectId}&compose=1` : ""}`); };
   const [deliveryTypes, setDeliveryTypes] = useState<string[]>(DEFAULT_DELIVERIES);
   const [sessionStarted, setSessionStarted] = useState(false);
   useEffect(() => {
@@ -382,13 +386,13 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mode === "oneclick" && intakeController.current) { await intakeController.current.revise(); return; }
+    if (mode !== "professional" && intakeController.current) { await intakeController.current.revise(); return; }
     const name = detectedName();
     if (!brief.trim() && (mode === "professional" || (!savedDishCount && !dishItems.length && !storeItems.length))) { setError("上传素材，或说说你想做什么"); return; }
     if (mode === "professional" && !name) { setError("请在文字中写明“门店名称：×××”"); return; }
     if (mode === "professional" && !savedDishCount && !dishItems.length) { setError("请添加至少一张菜品或菜单素材"); return; }
     setError("");
-    const saved = await onSubmit({ name: name || "店铺五图项目", brief: mode === "oneclick" ? brief.trim() : `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
+    const saved = await onSubmit({ name: name || "店铺五图项目", brief: mode !== "professional" ? brief.trim() : `${brief.trim()}\n视觉风格：${style}\n排版布局：${layout}\n模板：${template}\n模型：${model}`, storeItems, dishItems });
     if (saved) { [...storeItems, ...dishItems].forEach((item) => URL.revokeObjectURL(item.previewUrl)); setStoreItems([]); setDishItems([]); }
   }
 
@@ -405,7 +409,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
     const pending = localAssets.filter((item) => item.kind === kind);
     const saved = savedReferenceAssets.filter((item) => item.kind === kind && !excluded.includes(item.asset.id) && (!restoredSelection || restoredSelection.includes(item.asset.id)));
     return <>
-        {saved.map(({ asset }) => <ReferenceThumbnail key={asset.id} src={apiUrl(asset.preview_path!)} name={asset.original_name} onRemove={mode === "oneclick" ? () => setExcluded(ids => [...ids, asset.id]) : undefined} />)}
+        {saved.map(({ asset }) => <ReferenceThumbnail key={asset.id} src={apiUrl(asset.preview_path!)} name={asset.original_name} onRemove={mode !== "professional" ? () => setExcluded(ids => [...ids, asset.id]) : undefined} />)}
         {pending.map((item) => <ReferenceThumbnail key={item.id} src={item.previewUrl} name={item.file.name} reading={item.status === "reading"} onRemove={() => removeFile(item.id, kind)} />)}
     </>;
   };
@@ -413,7 +417,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   const dishGroup = <ReferenceCategory label="菜品·菜单" count={dishItems.length + selectedSaved.filter((item) => item.kind === "dish").length} onAdd={() => dishInputRef.current?.click()}>{assetGroup("dish")}</ReferenceCategory>;
 
 
-  const reviewPanel = mode === "oneclick" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
+  const reviewPanel = mode !== "professional" && projectId && <M1Review key={projectId} projectId={projectId} seed={intakeSeed ?? null}
       autoGenerate={canAutoGenerate} onGenerationActive={handleGenerationActive} controller={intakeController} target={conversationTarget}
       draft={{ outputType, deliveryTypes, text: [conversationText, brief].filter(Boolean).join("\n"), assetIds: selectedSaved.map(({asset}) => asset.id), pending: localAssets.length > 0, replyField,
         style: ({ "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" } as Record<string,string>)[style] ?? "appetite",
@@ -421,7 +425,8 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
       onReply={field => { if (field === "illustration") setBrief("使用AI示意图"); promptRef.current?.focus({ preventScroll: true }); }}
       onBusy={setReviewBusy}
       onRestore={snapshot => {
-        setOutputType(snapshot.output_type || "five_panel");
+        if (snapshot.output_type === "full_plan" && !fullPlan) { window.location.replace(`/full-plan${window.location.search}`); return; }
+        setOutputType(fullPlan ? "full_plan" : snapshot.output_type || "five_panel");
         setDeliveryTypes(snapshot.delivery_types || DEFAULT_DELIVERIES);
         setConversationText(snapshot.text); setBrief("");
         setReplyField(null);
@@ -441,11 +446,12 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
           provider: model.includes("豆包") ? "doubao" : "qwen" };
       }} />;
   const workbench = sessionStarted || Boolean(intakeSeed || conversationText || generationTask);
-  if (mode === "oneclick") return <section className={`oneclickStudio ${workbench ? "isWorking" : "isWelcome"}`} aria-label="一键生图工作区">
-    <header className="studioHeader"><span title={projectId ? projectName : undefined}>{projectId ? projectName || "正在整理项目名称…" : "从一个想法，开始门店设计"}</span><div><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")}>素材与设置</button><a href={projectId ? `/?project=${projectId}&compose=1` : "/"}>新建创作</a></div></header>
+  if (mode !== "professional") return <section className={`oneclickStudio ${workbench ? "isWorking" : "isWelcome"}`} aria-label={fullPlan ? "全案设计工作区" : "一键生图工作区"}>
+    <header className="studioHeader"><span title={projectId ? projectName : undefined}>{projectId ? projectName || "正在整理项目名称…" : fullPlan ? "全案设计" : "从一个想法，开始门店设计"}</span><div><button type="button" onClick={() => onOpenLibrary("store")}>素材库</button><a href={`${fullPlan ? "/full-plan" : "/"}${projectId ? `?project=${projectId}&compose=1` : ""}`}>新建创作</a></div></header>
     <div className="studioWelcome" hidden={workbench}>
-      <div className="creationTypeTabs" aria-label="创作模式"><button type="button" onClick={onOpenProfessional}>创作</button><button type="button" className="active" aria-current="page" onClick={onOpenOneClick}>一键生图</button><button type="button" onClick={() => { setOutputType("full_plan"); setDeliveryTypes(DEFAULT_DELIVERIES); promptRef.current?.focus(); }}>全案设计</button></div>
-      <h1>今天，想为门店做什么图？</h1><p>说一句想法，或放几张照片。设计交给团绘。</p>
+      <div className="creationTypeTabs" aria-label="创作模式"><button type="button" onClick={onOpenProfessional}>创作</button><button type="button" className={!fullPlan ? "active" : ""} aria-current={!fullPlan ? "page" : undefined} onClick={onOpenOneClick}>一键生图</button><button type="button" className={fullPlan ? "active" : ""} aria-current={fullPlan ? "page" : undefined} onClick={openFullPlan}>全案设计</button></div>
+      <h1>{fullPlan ? "一次安排，一套门店设计" : "今天，想为门店做什么图？"}</h1><p>{fullPlan ? "选择需要的作品，说说这次的想法。" : "说一句想法，或放几张照片。设计交给团绘。"}</p>
+      {fullPlan && <p className="fullPlanMigrationNote">临时工作区 · 已保留组合生成流程，正式页面待 Figma 确认后开发。</p>}
     </div>
     <div ref={setConversationTarget} className="studioMessages" role="region" aria-label="创作消息" tabIndex={0} hidden={!workbench}>
       {busy && !reviewBusy && <p role="status">正在保存本次资料…</p>}
@@ -461,11 +467,11 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
         <StudioPhotoStack photos={[...selectedSaved.map(({asset}) => ({id: asset.id, src: apiUrl(asset.preview_path!)})), ...localAssets.map(item => ({id: item.id, src: item.previewUrl}))]} disabled={busy || reviewBusy} onAdd={() => dishInputRef.current?.click()}>{assetGroup("store")}{assetGroup("dish")}</StudioPhotoStack>
         <label className="studioInput"><span className="srOnly">创作需求</span><textarea ref={promptRef} value={brief} disabled={busy || reviewBusy} maxLength={8000} rows={3} placeholder={workbench ? "接着说，或者告诉我哪里想改。" : "想做什么图？说一句想法，或添加几张参考照片。"} onChange={e => { setBrief(e.target.value); setError(""); }} /></label>
       </div>
-      <footer className="studioToolbar"><button type="button" onClick={() => setAssetDialog(assetDialog ? null : "all")} aria-expanded={!!assetDialog}>{OUTPUT_NAMES[outputType]} · {style === "智能匹配" ? "自动风格" : style}</button><button className="studioPrimary" type="submit" disabled={busy || reviewBusy}>{generationActive ? "停止生成" : busy || reviewBusy ? "正在理解…" : workbench ? "发送" : "开始生成"}</button></footer>
+      <footer className="studioToolbar"><StudioOutputPicker fullPlan={fullPlan} outputType={outputType} onOutput={setOutputType} deliveryTypes={deliveryTypes} onDeliveries={setDeliveryTypes} style={style} styles={QUICK_OPTIONS.style} onStyle={setStyle} model={model} models={QUICK_OPTIONS.model} onModel={setModel} open={!!assetDialog} onOpen={open => setAssetDialog(open ? "all" : null)} disabled={busy || reviewBusy || generationActive} onStore={() => storeInputRef.current?.click()} onPhoto={() => dishInputRef.current?.click()} onLibrary={() => onOpenLibrary("store")} /><button className="studioPrimary" type="submit" disabled={busy || reviewBusy}>{generationActive ? "停止生成" : busy || reviewBusy ? "正在理解…" : workbench ? "发送" : "开始生成"}</button></footer>
       <p className="studioPolicy">无实拍可做 AI 示意图；门头仅用于识别，不放进成品。</p>
       {(error || messageTone === "error") && <p className="studioHint" role="alert">{error || message}</p>}
     </form>
-    {assetDialog && <section className="studioSettings" aria-label="素材与设置"><header><h2>素材与设置</h2><button type="button" onClick={() => setAssetDialog(null)}>收起</button></header><p>门头、菜单仅用于识别；请选择真实菜品照片用于成品。</p><div className="studioSettingsActions"><button type="button" onClick={() => storeInputRef.current?.click()}>添加门头参考</button><button type="button" onClick={() => dishInputRef.current?.click()}>添加菜品照片</button><button type="button" onClick={() => onOpenLibrary("store")}>打开素材库</button></div><label>图片类型<select value={outputType} onChange={e => { setOutputType(e.target.value); if(e.target.value === "full_plan") setDeliveryTypes(DEFAULT_DELIVERIES); }}>{Object.entries(OUTPUT_NAMES).map(([key,name]) => <option key={key} value={key}>{name}</option>)}</select></label>{outputType === "full_plan" && <fieldset><legend>全案包含的作品</legend>{Object.entries(OUTPUT_NAMES).filter(([key]) => key !== "full_plan").map(([key,name]) => <label key={key}><input type="checkbox" checked={deliveryTypes.includes(key)} onChange={e => setDeliveryTypes(items => e.target.checked ? [...items,key] : items.length > 1 ? items.filter(v => v !== key) : items)} />{name}</label>)}</fieldset>}<label>风格<select value={style} onChange={e => setStyle(e.target.value)}>{QUICK_OPTIONS.style.map(v => <option key={v}>{v}</option>)}</select></label><label>生图模型<select value={model} onChange={e => setModel(e.target.value)}>{QUICK_OPTIONS.model.map(v => <option key={v}>{v}</option>)}</select></label></section>}
+
     <input ref={storeInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => chooseFiles(e,"store")} />
     <input ref={dishInputRef} className="visuallyHiddenFile" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e => chooseFiles(e,"dish")} />
     <dialog ref={consentRef} className="studioConsent"><h2>开始前，先让你知道费用</h2><p>本地内测使用你配置的模型账号，文字理解和图片生成按服务商实际用量计费。当前还没有接入积分报价，无法提前给出准确金额。</p><p>同意后，本次需求清楚即可生成所选图片；全案或多张详情页会先列出项目及调用次数，确认后才生成。不自动重试失败任务。</p><p>请确认拥有上传素材的使用权。没有照片时使用带标识的 AI 示意图。</p><div><button type="button" onClick={() => consentRef.current?.close()}>先不生成</button><button className="studioPrimary" type="button" onClick={() => { authorized.current = true; consentRef.current?.close(); simpleFormRef.current?.requestSubmit(); }}>同意并开始</button></div></dialog>
@@ -473,7 +479,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
   </section>;
 
   return <section className="quickCreationHome" aria-labelledby="quick-creation-title">
-    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className={mode === "professional" ? "active" : ""} role="tab" aria-selected={mode === "professional"} onClick={onOpenProfessional}>创作</button><button type="button" className={false ? "active" : ""} role="tab" aria-selected={false} onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled>全案设计</button></div><h1 id="quick-creation-title">让每家门店，都有一套会成交的设计</h1></header>
+    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className={mode === "professional" ? "active" : ""} role="tab" aria-selected={mode === "professional"} onClick={onOpenProfessional}>创作</button><button type="button" className={false ? "active" : ""} role="tab" aria-selected={false} onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" onClick={openFullPlan}>全案设计</button></div><h1 id="quick-creation-title">让每家门店，都有一套会成交的设计</h1></header>
     <form className="quickComposer" noValidate onSubmit={submit} aria-busy={reviewBusy} inert={reviewBusy}>
       <div className="quickComposerBody hasReferences">
         <div className="quickAssetRail" aria-label="本次参考素材">
@@ -521,7 +527,7 @@ function QuickCreationHome({ mode, projectId, projectName, assets, coverage, gen
 
 function ConversationWorkbench({ projectName, message, messageTone, taskId, collectingFacts, onOpenOneClick, children }: { projectName: string; message: string; messageTone: "info" | "success" | "error"; taskId: string; collectingFacts: boolean; onOpenOneClick: () => void; children: ReactNode }) {
   return <section className="conversationHome" aria-labelledby="conversation-title">
-    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" disabled title="装修全案将在后续付费版本开放">全案设计</button></div><h1 id="conversation-title">让每家门店，都有一套会成交的设计</h1></header>
+    <header className="creationAgentHeader"><div className="creationTypeTabs" role="tablist" aria-label="创作模式"><button type="button" className="active" role="tab" aria-selected="true">创作</button><button type="button" role="tab" aria-selected="false" onClick={onOpenOneClick}>一键生图</button><button type="button" role="tab" aria-selected="false" onClick={() => { const id = new URLSearchParams(window.location.search).get("project"); window.location.assign(`/full-plan${id ? `?project=${id}&compose=1` : ""}`); }}>全案设计</button></div><h1 id="conversation-title">让每家门店，都有一套会成交的设计</h1></header>
     <section className="conversationWorkbench" id="guide" aria-label="团绘店长对话工作台">
       <div className="conversationThread"><div className="conversationStage">{children}</div></div>
     </section>
@@ -561,8 +567,10 @@ function GenerateStep({ projectId, designPlan, task, busy, onGenerate, onPause }
 }
 
 export default function Home() {
+  const pathname = usePathname();
+  const entryView: CreationView = pathname === "/full-plan" ? "fullplan" : "oneclick";
   const [intakeSeed, setIntakeSeed] = useState<IntakeSeed | null>(null);
-  const [projectId, setProjectId] = useState(""); const [projectName, setProjectName] = useState(""); const [taskId, setTaskId] = useState(""); const [assets, setAssets] = useState<Asset[]>([]); const [coverage, setCoverage] = useState<Coverage | null>(null); const [designPlan, setDesignPlan] = useState<DesignPlan | null>(null); const [generationTask, setGenerationTask] = useState<GenerationTask | null>(null); const [message, setMessage] = useState("把门店资料和创作要求一次发给我。"); const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info"); const [busy, setBusy] = useState(false); const [activeStep, setActiveStep] = useState<Step>(1); const [activeView, setActiveView] = useState<WorkspaceView>("oneclick"); const [libraryTab, setLibraryTab] = useState<LibraryTab>("store"); const [sidebarOpen, setSidebarOpen] = useState(false); const libraryReturnView = useRef<CreationView>("oneclick");
+  const [projectId, setProjectId] = useState(""); const [projectName, setProjectName] = useState(""); const [taskId, setTaskId] = useState(""); const [assets, setAssets] = useState<Asset[]>([]); const [coverage, setCoverage] = useState<Coverage | null>(null); const [designPlan, setDesignPlan] = useState<DesignPlan | null>(null); const [generationTask, setGenerationTask] = useState<GenerationTask | null>(null); const [message, setMessage] = useState("把门店资料和创作要求一次发给我。"); const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info"); const [busy, setBusy] = useState(false); const [activeStep, setActiveStep] = useState<Step>(1); const [activeView, setActiveView] = useState<WorkspaceView>(entryView); const [libraryTab, setLibraryTab] = useState<LibraryTab>("store"); const [sidebarOpen, setSidebarOpen] = useState(false); const libraryReturnView = useRef<CreationView>("oneclick");
   useEffect(() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }, [activeStep, activeView]);
   useEffect(() => {
     const renamed = (event: Event) => {
@@ -572,7 +580,7 @@ export default function Home() {
     window.addEventListener("tuanhui:project-renamed", renamed);
     return () => window.removeEventListener("tuanhui:project-renamed", renamed);
   }, [projectId]);
-  useEffect(() => { const params = new URLSearchParams(window.location.search); const savedProjectId = params.get("project"); const savedTaskId = params.get("task"); if (!savedProjectId) return; void (async () => { setBusy(true); try { const [project, savedAssets] = await Promise.all([apiRequest<ProjectInfo>(`/projects/${savedProjectId}`), apiRequest<Asset[]>(`/projects/${savedProjectId}/assets`)]); setProjectId(project.id); setProjectName(project.name); setAssets(savedAssets); if (params.get("compose") === "1") { setActiveStep(1); setActiveView("oneclick"); notify("已保留项目素材，请填写这一次的新需求。", "success"); return; } if (params.get("creation")) { setActiveView("oneclick"); setActiveStep(1); return; } try { const plan = await apiRequest<DesignPlan>(`/projects/${savedProjectId}/design-plans/latest`); setDesignPlan(plan); setActiveStep(plan.status === "CONFIRMED" ? 6 : 5); } catch { setActiveStep(savedAssets.some((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)) ? 3 : 2); } if (savedTaskId) { const task = await apiRequest<GenerationTask>(`/tasks/${savedTaskId}`); setTaskId(task.id); setGenerationTask(task); setActiveStep(6); if (task.status === "PENDING" || task.status === "RUNNING") window.setTimeout(() => void pollGeneration(task.id), 700); } notify("已恢复上次的项目和生成状态。", "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } })(); }, []);
+  useEffect(() => { const params = new URLSearchParams(window.location.search); const savedProjectId = params.get("project"); const savedTaskId = params.get("task"); if (!savedProjectId) return; void (async () => { setBusy(true); try { const [project, savedAssets] = await Promise.all([apiRequest<ProjectInfo>(`/projects/${savedProjectId}`), apiRequest<Asset[]>(`/projects/${savedProjectId}/assets`)]); setProjectId(project.id); setProjectName(project.name); setAssets(savedAssets); if (params.get("compose") === "1") { setActiveStep(1); setActiveView(entryView); notify("已保留项目素材，请填写这一次的新需求。", "success"); return; } if (params.get("creation")) { setActiveView(entryView); setActiveStep(1); return; } try { const plan = await apiRequest<DesignPlan>(`/projects/${savedProjectId}/design-plans/latest`); setDesignPlan(plan); setActiveStep(plan.status === "CONFIRMED" ? 6 : 5); } catch { setActiveStep(savedAssets.some((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)) ? 3 : 2); } if (savedTaskId) { const task = await apiRequest<GenerationTask>(`/tasks/${savedTaskId}`); setTaskId(task.id); setGenerationTask(task); setActiveStep(6); if (task.status === "PENDING" || task.status === "RUNNING") window.setTimeout(() => void pollGeneration(task.id), 700); } notify("已恢复上次的项目和生成状态。", "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } })(); }, []);
   const hasStoreAssets = assets.some((asset) => STORE_ASSET_ROLES.includes(asset.semantic_role)); const maxStep: Step = designPlan?.status === "CONFIRMED" ? 6 : designPlan ? 5 : coverage || taskId ? 4 : hasStoreAssets ? 3 : projectId ? 2 : 1; const factText = (key: string) => Array.isArray(coverage?.facts[key]) ? (coverage?.facts[key] as string[]).join("、") : String(coverage?.facts[key] ?? "待确认");
   function notify(text: string, tone: "info" | "success" | "error" = "info") { setMessage(text); setMessageTone(tone); }
   async function createProject(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (projectId) { setActiveStep(2); notify("门店信息已保留，请继续上传门店素材。", "success"); return; } setBusy(true); const fd = new FormData(event.currentTarget); const name = String(fd.get("name") ?? "").trim(); const industry = String(fd.get("industry") ?? "餐饮"); try { const result = await apiRequest<{ project_id: string }>("/projects", jsonRequest("POST", { name, industry, platforms: ["douyin", "meituan"] })); window.history.replaceState({}, "", `?project=${result.project_id}`); setProjectId(result.project_id); setProjectName(name); setAssets([]); setCoverage(null); setDesignPlan(null); setGenerationTask(null); setActiveStep(2); notify("项目已创建，请先上传门店素材。", "success"); } catch (error) { notify((error as Error).message, "error"); } finally { setBusy(false); } }
@@ -591,8 +599,13 @@ export default function Home() {
   async function confirmQuickAndGenerate(styleLabel: string, modelLabel: string) { if (!coverage?.ready_for_confirmation || !projectId) return; const provider = modelLabel.startsWith("豆包") ? "doubao" : "qwen"; if (!window.confirm(`确认门店事实并调用${provider === "qwen" ? "千问" : "豆包"}图片模型？本次操作会产生生成费用。`)) return; const styleMap: Record<string, string> = { "智能匹配": "appetite", "食欲冲击": "appetite", "品牌质感": "brand", "烟火市井": "street", "清爽简约": "minimal" }; setBusy(true); setGenerationTask(null); try { await apiRequest(`/projects/${projectId}/fact-versions/${coverage.fact_version}/confirm`, jsonRequest("POST", { confirmed: true })); const draft = await apiRequest<DesignPlan>(`/projects/${projectId}/design-plans`, jsonRequest("POST", { style: styleMap[styleLabel] || "appetite" })); const plan = await apiRequest<DesignPlan>(`/projects/${projectId}/design-plans/${draft.id}/confirm`, jsonRequest("POST", { confirmed: true })); setDesignPlan(plan); setActiveStep(6); const result = await apiRequest<{ task_id: string }>(`/projects/${projectId}/generation-runs`, jsonRequest("POST", { provider, allow_fallback: true })); window.history.replaceState({}, "", `?project=${projectId}&task=${result.task_id}`); setTaskId(result.task_id); setGenerationTask({ id: result.task_id, status: "PENDING", progress: 0, result: {}, error: null }); notify(`${provider === "qwen" ? "千问" : "豆包"}正在生成视觉底图，完成后会自动排版与裁切。`, "info"); window.setTimeout(() => void pollGeneration(result.task_id), 700); } catch (error) { setBusy(false); notify((error as Error).message, "error"); } }
   async function pauseGeneration() { if (!generationTask || !["PENDING", "RUNNING"].includes(generationTask.status)) return; try { const task = await apiRequest<GenerationTask>(`/tasks/${generationTask.id}/pause`, jsonRequest("POST", {})); setGenerationTask(task); setBusy(false); notify("已暂停；不会继续排版、裁切或调用备用模型。", "info"); } catch (error) { notify((error as Error).message, "error"); } }
   async function selectStoreName(name: string) { setBusy(true); try { await apiRequest(`/projects/${projectId}/fact-versions`, jsonRequest("POST", { store_name: name })); await loadCoverage(); notify(`已确认目标门店：${name}`, "success"); } catch (error) { notify((error as Error).message, "error"); setBusy(false); } }
-  function navigate(view: WorkspaceView) { if (view === "oneclick" || view === "professional") libraryReturnView.current = view; setActiveView(view); setSidebarOpen(false); }
-  function openLibrary(tab: LibraryTab) { if (activeView === "oneclick" || activeView === "professional") libraryReturnView.current = activeView; setLibraryTab(tab); navigate("library"); }
+  function navigate(view: WorkspaceView) {
+    if (view === "fullplan" && pathname !== "/full-plan") { window.location.assign(`/full-plan${projectId ? `?project=${projectId}&compose=1` : ""}`); return; }
+    if (view === "oneclick" && pathname === "/full-plan") { window.location.assign(`/${projectId ? `?project=${projectId}&compose=1` : ""}`); return; }
+    if (view !== "library") libraryReturnView.current = view;
+    setActiveView(view); setSidebarOpen(false);
+  }
+  function openLibrary(tab: LibraryTab) { if (activeView !== "library") libraryReturnView.current = activeView; setLibraryTab(tab); navigate("library"); }
   async function submitConversationIntake(payload: ConversationIntakePayload): Promise<boolean> {
     setBusy(true); let targetProjectId = projectId;
     try {
@@ -604,7 +617,7 @@ export default function Home() {
       if (payload.storeItems.length) await persistUploads(payload.storeItems, targetProjectId);
       if (payload.dishItems.length) await persistUploads(payload.dishItems, targetProjectId);
       const savedAssets = await apiRequest<Asset[]>(`/projects/${targetProjectId}/assets`); setAssets(savedAssets);
-      if (activeView === "oneclick") {
+      if (activeView === "oneclick" || activeView === "fullplan") {
         setCoverage(null); setDesignPlan(null); setGenerationTask(null);
         setIntakeSeed({ text: payload.brief, assetIds: savedAssets.map(a => a.id), nonce: crypto.randomUUID() });
         setBusy(false); notify("收到，我们就在这里接着聊。", "success"); return true;
@@ -625,13 +638,13 @@ export default function Home() {
     {activeStep === 6 && <GenerateStep projectId={projectId} designPlan={designPlan} task={generationTask} busy={busy} onGenerate={startGeneration} onPause={pauseGeneration} />}
   </>;
 
-  return <div className={`appShell ${activeView === "oneclick" ? "studioShell" : ""}`}>
+  return <div className={`appShell ${(activeView === "oneclick" || activeView === "fullplan") ? "studioShell" : ""}`}>
     <a className="skipLink" href="#workspace">跳到主要内容</a>
     <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} projectName={projectName} activeView={activeView} onNavigate={navigate} />
     <main className="mainArea" id="workspace">
       <header className="topbar"><button className="iconButton menuButton" aria-label="打开导航" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button><div className="announcement"><span>NEW</span><b>{activeView === "professional" ? "团绘AI 专业创作" : "团绘AI 一键生图首页"}</b><small>{activeView === "professional" ? "确认事实与设计方案后再生成" : "首页确认真实信息，直接成图"}</small></div><div className="topActions"><span className="tokenBadge"><i /> 内测 · 生图另计费</span><a className="helpButton" href="#guide"><Icon name="help" size={18} />帮助</a></div></header>
       <div className="contentWrap">
-        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : activeView === "oneclick" ? <QuickCreationHome intakeSeed={intakeSeed} onPrepareAssets={async items => { await persistUploads(items, projectId); const saved = await apiRequest<Asset[]>(`/projects/${projectId}/assets`); setAssets(saved); return saved; }} mode="oneclick" projectId={projectId} projectName={projectName} assets={assets} coverage={coverage} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : activeStep <= 4 ? !coverage ? <QuickCreationHome mode="professional" projectId={projectId} projectName={projectName} assets={assets} coverage={null} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts onOpenOneClick={() => navigate("oneclick")}><FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /></ConversationWorkbench> : <>
+        {activeView === "library" ? <AssetLibrary assets={assets} activeTab={libraryTab} onTabChange={setLibraryTab} onBack={() => navigate(libraryReturnView.current)} /> : (activeView === "oneclick" || activeView === "fullplan") ? <QuickCreationHome intakeSeed={intakeSeed} onPrepareAssets={async items => { await persistUploads(items, projectId); const saved = await apiRequest<Asset[]>(`/projects/${projectId}/assets`); setAssets(saved); return saved; }} mode={activeView} projectId={projectId} projectName={projectName} assets={assets} coverage={coverage} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : activeStep <= 4 ? !coverage ? <QuickCreationHome mode="professional" projectId={projectId} projectName={projectName} assets={assets} coverage={null} generationTask={generationTask} designPlan={designPlan} busy={busy} message={message} messageTone={messageTone} onSubmit={submitConversationIntake} onSubmitFacts={submitAnswers} onConfirmAndGenerate={confirmQuickAndGenerate} onGenerateExisting={startGeneration} onOpenOneClick={() => navigate("oneclick")} onOpenProfessional={() => navigate("professional")} onOpenLibrary={openLibrary} onPause={pauseGeneration} /> : <ConversationWorkbench projectName={projectName} message={message} messageTone={messageTone} taskId={taskId} collectingFacts onOpenOneClick={() => navigate("oneclick")}><FactsStep key={`${coverage.fact_version}-${coverage.questions.map((question) => question.field).join("|")}`} coverage={coverage} busy={busy} onSubmit={submitAnswers} onConfirm={confirm} onSelectStore={selectStoreName} factText={factText} /></ConversationWorkbench> : <>
           <section className="workbench" aria-label={activeView === "professional" ? "专业门店资料采集工作台" : "五图创作工作台"}>
             <div className="workbenchTop"><div className="workflowBackSlot">{activeStep > 1 && <button className="workflowBackButton" type="button" aria-label="返回上一步" onClick={() => setActiveStep((activeStep - 1) as Step)}><Icon name="arrow" size={16} /><span>上一步</span></button>}</div><div className="workbenchLabel"><Icon name={activeStep === 1 ? "store" : activeStep === 4 ? "chat" : activeStep >= 5 ? "spark" : "upload"} size={18} /><span><b>{activeStep >= 5 ? "五图创作" : "门店视觉包"}</b><small>{projectName || "新建项目"}</small></span></div><StepTabs active={activeStep} maxStep={maxStep} onSelect={setActiveStep} /><div className="stepCounter">{activeStep >= 5 ? activeStep - 4 : activeStep} / {activeStep >= 5 ? 2 : 4}</div></div>
             {activeStepContent}
