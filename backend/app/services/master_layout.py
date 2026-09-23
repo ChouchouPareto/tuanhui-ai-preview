@@ -34,8 +34,15 @@ def fitted_text(draw, text, box, font_factory, color, size=60):
                 lines.append(line)
                 line = ""
             elif line and draw.textlength(line + character, font=font) > width:
-                lines.append(line)
-                line = character
+                # Prefer an existing phrase boundary to breaking e.g. 山/西.
+                # Never discard characters, introduce copy or force tiny fragments.
+                boundary = max((i+1 for i,c in enumerate(line) if c in " ，、：；。！？的"), default=0)
+                if boundary >= len(line)/2 and boundary < len(line):
+                    lines.append(line[:boundary])
+                    line = line[boundary:] + character
+                else:
+                    lines.append(line)
+                    line = character
             else:
                 line += character
         lines.append(line)
@@ -99,7 +106,7 @@ def compose_master(background, plan, assets, font_factory):
     return canvas
 
 
-def compose_regions(background, plan, assets, font_factory):
+def region_underlay(background, plan, assets):
     width, height = map(int, plan["canvas"]["recommended_size"].split("x"))
     base, ink, accent = PALETTES.get(plan["style"]["key"], PALETTES["appetite"])
     texture = ImageOps.fit(background.convert("RGB"), (width, height), Image.Resampling.LANCZOS)
@@ -127,20 +134,12 @@ def compose_regions(background, plan, assets, font_factory):
     veil.paste(ImageColor.getrgb(base)+(255,), (0,0,width,height))
     veil.putalpha(mask)
     canvas = Image.alpha_composite(canvas.convert("RGBA"),veil).convert("RGB")
-    draw = ImageDraw.Draw(canvas)
-    entries, seen = [], set()
-    for key in ("store_name", "headline", "subheadline", "price"):
-        value = str(plan["copy"].get(key) or "").strip()
-        if value and value not in seen:
-            entries.append((key,value)); seen.add(value)
-    # Only actual information consumes space; no mandatory text per export slice.
-    weights = {"store_name": 1.2, "headline": 2, "subheadline": 1, "price": 1.3}
-    total = sum(weights[key] for key, _ in entries)
-    for key, value in entries:
-        slot = h * weights[key] / total
-        fitted_text(draw, value, (x, y, w, slot-8), font_factory,
-                    accent if key == "price" else ink, 74 if key == "headline" else 50)
-        y += slot
+    return canvas
+
+
+def compose_regions(background, plan, assets, font_factory):
+    from app.services.canvas_render import render_scene, scene_from_plan
+    canvas, _ = render_scene(scene_from_plan(plan), font_factory, region_underlay(background, plan, assets))
     return canvas
 
 

@@ -1,0 +1,1559 @@
+{
+  "router_version": "dialogue-safety-v1.1",
+  "case_results": [
+    {
+      "case_id": "E001",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.404814+00:00",
+      "finished_at": "2026-09-17T16:24:57.410765+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "question",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "bc5258f2-7393-4952-b44a-18ae98bfed81",
+          "project_id": "69eaaa37-413b-4fac-9df9-0741a8e99071"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这条我按咨询处理，不会自动再生图。当前支持查看记录和明确改标题；需要换画面时再明确提出生成要求，并核对费用。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 2
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E002",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.411274+00:00",
+      "finished_at": "2026-09-17T16:24:57.413039+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "question",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "a0908eda-ba2f-4102-89f9-ba592073811d",
+          "project_id": "14c65f81-6a1c-45a8-a279-ecd57693876d"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这条我按咨询处理，不会自动再生图。当前支持查看记录和明确改标题；需要换画面时再明确提出生成要求，并核对费用。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E003",
+      "status": "evaluated_routing_only",
+      "profile": "running",
+      "started_at": "2026-09-17T16:24:57.413645+00:00",
+      "finished_at": "2026-09-17T16:24:57.415442+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "status",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "2be6ef4f-930c-4135-af8a-676b5792ca84",
+          "project_id": "46c1e35f-f3b9-42b4-bd38-c94cbdb026ed"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "RUNNING",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这版正在处理，记录进度 0%。这版没有可核对的模型调用记录，不能用当前默认配置代替。费用没有准确账单记录时不能推算为免费；没有重新提交生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E004",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.415814+00:00",
+      "finished_at": "2026-09-17T16:24:57.417381+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "question",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "我可以先帮你了解流程，不会直接生图。生成前会核对本次费用；已有作品的问题，请先打开对应作品，我才能检查它的实际记录。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E005",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.417832+00:00",
+      "finished_at": "2026-09-17T16:24:57.418809+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "edit_copy",
+        "action": "prepare",
+        "can_prepare": true,
+        "target": {
+          "task_id": "04f5fa6b-eb1e-45fa-99c7-d9ed854822b0",
+          "project_id": "e9521fc0-8c52-48a6-a89d-7b682874c9d9"
+        },
+        "evidence": [],
+        "reply": "",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E006",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.419267+00:00",
+      "finished_at": "2026-09-17T16:24:57.421484+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "efe05c6e-6bed-478c-b7e1-08f924d5cf49",
+          "project_id": "939d5c7a-ccb1-48ab-a9db-2f4adc278e44"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E007",
+      "status": "evaluated_routing_only",
+      "profile": "ambiguous",
+      "started_at": "2026-09-17T16:24:57.421982+00:00",
+      "finished_at": "2026-09-17T16:24:57.423202+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "这个项目里有多版作品。请先打开想处理的那一版，再告诉我哪里需要调整；我还没有重新生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E008",
+      "status": "evaluated_routing_only",
+      "profile": "old_selected",
+      "started_at": "2026-09-17T16:24:57.423702+00:00",
+      "finished_at": "2026-09-17T16:24:57.425171+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "91cab134-9f86-42be-b410-fbb121525590",
+          "project_id": "1bdbe1a6-db5f-44e4-bfc9-17dee9c062d8"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E009",
+      "status": "evaluated_routing_only",
+      "profile": "ambiguous",
+      "started_at": "2026-09-17T16:24:57.425656+00:00",
+      "finished_at": "2026-09-17T16:24:57.426872+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "这个项目里有多版作品。请先打开想处理的那一版，再告诉我哪里需要调整；我还没有重新生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E010",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.427322+00:00",
+      "finished_at": "2026-09-17T16:24:57.428756+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "question",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "81fe0060-3487-4887-ae0c-ad6973b4af34",
+          "project_id": "376d49c2-ddac-483a-a254-f80aec20c605"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这条我按咨询处理，不会自动再生图。当前支持查看记录和明确改标题；需要换画面时再明确提出生成要求，并核对费用。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E011",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.429166+00:00",
+      "finished_at": "2026-09-17T16:24:57.430072+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "new_creation",
+        "action": "prepare",
+        "can_prepare": true,
+        "target": {
+          "task_id": "fefed563-53c1-4119-b09c-b012f6c0516c",
+          "project_id": "c20a6cd9-82d4-450b-a192-23b0d9ebea67"
+        },
+        "evidence": [],
+        "reply": "",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E012",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.430526+00:00",
+      "finished_at": "2026-09-17T16:24:57.431732+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "new_creation",
+        "action": "prepare",
+        "can_prepare": true,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E013",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.432124+00:00",
+      "finished_at": "2026-09-17T16:24:57.433021+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "new_creation",
+        "action": "prepare",
+        "can_prepare": true,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E014",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.433344+00:00",
+      "finished_at": "2026-09-17T16:24:57.434208+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "new_creation",
+        "action": "prepare",
+        "can_prepare": true,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E015",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.434590+00:00",
+      "finished_at": "2026-09-17T16:24:57.435785+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E016",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.436248+00:00",
+      "finished_at": "2026-09-17T16:24:57.437705+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "07c43c6a-9b8b-4d73-a37a-151e4cf0edd3",
+          "project_id": "52854f8e-2943-4394-8590-d2acd9b8186c"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E017",
+      "status": "evaluated_routing_only",
+      "profile": "running",
+      "started_at": "2026-09-17T16:24:57.438124+00:00",
+      "finished_at": "2026-09-17T16:24:57.439510+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "c5aa37b5-a312-4185-9d36-d126ffec187b",
+          "project_id": "e921d698-edab-4a5f-a9d1-676e57e96d0c"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "RUNNING",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这版仍在处理中。我没有新增生成任务；你可以继续询问进度，或点击「停止生成」。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E018",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.439942+00:00",
+      "finished_at": "2026-09-17T16:24:57.440975+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "new_creation",
+        "action": "prepare",
+        "can_prepare": true,
+        "target": {
+          "task_id": "78412c91-6a1c-4b87-b37b-ac524e783513",
+          "project_id": "39148482-0348-4e8c-846a-9234e32dfcc6"
+        },
+        "evidence": [],
+        "reply": "",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E019",
+      "status": "evaluated_routing_only",
+      "profile": "unknown",
+      "started_at": "2026-09-17T16:24:57.441456+00:00",
+      "finished_at": "2026-09-17T16:24:57.443037+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "status",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "a03d6b22-ae52-4109-aa61-454313240f83",
+          "project_id": "7a84abc8-cac6-464d-b085-185df08d0ce0"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "NEEDS_USER",
+            "progress": 0,
+            "error_code": "RECONCILING"
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这版已停止或需要处理，记录进度 0%。这版没有可核对的模型调用记录，不能用当前默认配置代替。费用没有准确账单记录时不能推算为免费；没有重新提交生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E020",
+      "status": "evaluated_routing_only",
+      "profile": "queued",
+      "started_at": "2026-09-17T16:24:57.443501+00:00",
+      "finished_at": "2026-09-17T16:24:57.444667+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "cancel",
+        "action": "cancel",
+        "can_prepare": false,
+        "target": {
+          "task_id": "32559a7e-cc56-4f1e-9f7b-77eccbfe62d1",
+          "project_id": "0fa2c459-a3c5-48c2-8744-2391be49bec8"
+        },
+        "evidence": [],
+        "reply": "请点击输入框旁的「停止生成」。已发送的请求可能仍会计费，停止不会重新提交任务。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E021",
+      "status": "evaluated_routing_only",
+      "profile": "running",
+      "started_at": "2026-09-17T16:24:57.445086+00:00",
+      "finished_at": "2026-09-17T16:24:57.446272+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "cancel",
+        "action": "cancel",
+        "can_prepare": false,
+        "target": {
+          "task_id": "8b48ac83-888f-4590-9eb6-8c49e3f0078f",
+          "project_id": "42e92af3-d0bb-4b84-97b4-78d12f1c82dd"
+        },
+        "evidence": [],
+        "reply": "请点击输入框旁的「停止生成」。已发送的请求可能仍会计费，停止不会重新提交任务。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E022",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.446717+00:00",
+      "finished_at": "2026-09-17T16:24:57.448322+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "5d682ae7-ff9d-48df-afc5-062b0074ac49",
+          "project_id": "da0c2c50-407d-4146-948e-828f92be67f1"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E023",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.448807+00:00",
+      "finished_at": "2026-09-17T16:24:57.450280+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "0d34a521-fe60-4c94-86e9-40bfca645cab",
+          "project_id": "0074802c-75d6-4a61-bf78-ae495a9399f0"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E024",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.450699+00:00",
+      "finished_at": "2026-09-17T16:24:57.452126+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "report_issue",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "63c8f408-7796-4754-a770-112305f3adea",
+          "project_id": "e60fd5d0-555f-4fc1-a13c-90da8c966b05"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "我查了这版的记录，但没有找到可核对的原始底图，暂时不能断定是模型绘字、排字还是预览问题。旧作品保留，没有重新生成。",
+        "next_steps": [
+          "在上方预览这版图片，指出具体文字或区域。",
+          "若只是改标题，可输入「标题改成……」；其他修复先明确范围，不自动整图重做。"
+        ],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E025",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.452538+00:00",
+      "finished_at": "2026-09-17T16:24:57.453991+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "report_issue",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "a3bbba1b-80b4-45f4-ba15-76c74320acf7",
+          "project_id": "4ad59cc9-ea61-4c75-b9b4-e485bae144f5"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "我查了这版的记录，但没有找到可核对的原始底图，暂时不能断定是模型绘字、排字还是预览问题。旧作品保留，没有重新生成。",
+        "next_steps": [
+          "在上方预览这版图片，指出具体文字或区域。",
+          "若只是改标题，可输入「标题改成……」；其他修复先明确范围，不自动整图重做。"
+        ],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E026",
+      "status": "evaluated_routing_only",
+      "profile": "failed",
+      "started_at": "2026-09-17T16:24:57.454435+00:00",
+      "finished_at": "2026-09-17T16:24:57.455825+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "report_issue",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "a0e94003-97a9-42d6-8317-7b098258e745",
+          "project_id": "ddb9b200-b07d-4a55-8380-61ea7c33f31f"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "FAILED_FINAL",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "我查了这版的记录，但没有找到可核对的原始底图，暂时不能断定是模型绘字、排字还是预览问题。旧作品保留，没有重新生成。",
+        "next_steps": [
+          "在上方预览这版图片，指出具体文字或区域。",
+          "若只是改标题，可输入「标题改成……」；其他修复先明确范围，不自动整图重做。"
+        ],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E027",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.456251+00:00",
+      "finished_at": "2026-09-17T16:24:57.457699+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "f3a61a16-efb2-43bb-aaa1-517db139984f",
+          "project_id": "402765c5-e098-4037-b6b5-26278534a161"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E028",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.458015+00:00",
+      "finished_at": "2026-09-17T16:24:57.459197+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E029",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.459496+00:00",
+      "finished_at": "2026-09-17T16:24:57.460609+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E030",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.460896+00:00",
+      "finished_at": "2026-09-17T16:24:57.462181+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E031",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.462620+00:00",
+      "finished_at": "2026-09-17T16:24:57.464137+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "f5db0380-b68b-4f2c-9a19-2a6b05e24d61",
+          "project_id": "e331c363-89d7-42d4-82f6-ea87b9458183"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E032",
+      "status": "evaluated_routing_only",
+      "profile": "ambiguous",
+      "started_at": "2026-09-17T16:24:57.464873+00:00",
+      "finished_at": "2026-09-17T16:24:57.466094+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "这个项目里有多版作品。请先打开想处理的那一版，再告诉我哪里需要调整；我还没有重新生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E033",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.466406+00:00",
+      "finished_at": "2026-09-17T16:24:57.467562+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E034",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.467869+00:00",
+      "finished_at": "2026-09-17T16:24:57.469031+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E035",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.469453+00:00",
+      "finished_at": "2026-09-17T16:24:57.470876+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "c24168c5-3b39-4d1b-bc55-f377b710a26f",
+          "project_id": "3f8aa9f8-29a0-459d-ab11-c6c63c87668d"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E036",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.471304+00:00",
+      "finished_at": "2026-09-17T16:24:57.472682+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "1df11912-1c1c-4912-9ad3-115cedabf58c",
+          "project_id": "50713d54-bfcf-4837-bfc3-dfd5384c0164"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E037",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.473000+00:00",
+      "finished_at": "2026-09-17T16:24:57.474149+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "你是想新做一张图，还是检查已有作品？说清这一步就好，我暂时没有生成图片。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E038",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.474587+00:00",
+      "finished_at": "2026-09-17T16:24:57.475980+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "unclear",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": "53224a2a-b125-49d0-9272-19d595823f3a",
+          "project_id": "c82c5dce-078d-40eb-8a0e-f382d55b6989"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "你想保留画面只改文字，还是重新做一版？如果是在反馈问题，直接说哪里不对就好，我会先查看这版记录，不会直接生成。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": false,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E039",
+      "status": "evaluated_routing_only",
+      "profile": "done",
+      "started_at": "2026-09-17T16:24:57.476620+00:00",
+      "finished_at": "2026-09-17T16:24:57.478007+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "question",
+        "action": "answer",
+        "can_prepare": false,
+        "target": {
+          "task_id": "1db2bd27-d333-4260-b9dd-e7e8c103702e",
+          "project_id": "d4452a28-6240-495d-8b4e-008edf7d5c31"
+        },
+        "evidence": [
+          {
+            "kind": "task",
+            "status": "SUCCEEDED",
+            "progress": 0,
+            "error_code": null
+          },
+          {
+            "kind": "saved_files",
+            "model-visual.png": false,
+            "long.png": false,
+            "text-guard.json": false,
+            "generation-audit.json": false
+          }
+        ],
+        "reply": "这条我按咨询处理，不会自动再生图。当前支持查看记录和明确改标题；需要换画面时再明确提出生成要求，并核对费用。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    },
+    {
+      "case_id": "E040",
+      "status": "evaluated_routing_only",
+      "profile": "empty",
+      "started_at": "2026-09-17T16:24:57.478300+00:00",
+      "finished_at": "2026-09-17T16:24:57.479464+00:00",
+      "http_status": 200,
+      "response": {
+        "schema_version": "dialogue-safety-v1.1",
+        "intent": "question",
+        "action": "clarify",
+        "can_prepare": false,
+        "target": {
+          "task_id": null,
+          "project_id": null
+        },
+        "evidence": [],
+        "reply": "我可以先帮你了解流程，不会直接生图。生成前会核对本次费用；已有作品的问题，请先打开对应作品，我才能检查它的实际记录。",
+        "next_steps": [],
+        "model_calls": 0,
+        "duration_ms": 1
+      },
+      "target_match": true,
+      "tasks_unchanged": true,
+      "model_call_records": 0,
+      "intent_match": true,
+      "unexpected_image_preparation": false,
+      "workflow_acceptance": "not_run",
+      "reason": "仅评测真实路由阶段；完整动作、授权、素材识别和视觉效果未由此用例执行。",
+      "safety_invariant_pass": true
+    }
+  ],
+  "summary": {
+    "dataset_cases": 40,
+    "routing_evaluated": 40,
+    "unsupported_fixtures": 0,
+    "intent_matches": 18,
+    "unexpected_image_preparations": 0,
+    "safety_invariant_failures": 0,
+    "full_workflow_cases_accepted": 0
+  },
+  "schema_version": "intent-routing-run-v1",
+  "run_id": "20260917T162457.083106Z_0cbeef60",
+  "execution_status": "routing_only",
+  "dataset_sha256": "a80da729e1a8c3c09bb50ebc03ceb4fe065e3073ae6ae66fbfa51b8c318ce17b",
+  "router_source_sha256": "da56d6280f1895131234cfd1596107bd484bc0ef08dbe64e59091a6227b70ba2",
+  "git_commit": "64deee5e5057d61475ea683b0f2e3d69f680d028",
+  "tracked_worktree_dirty": true,
+  "model_id_resolved": null,
+  "model_calls": 0,
+  "budget_limit": 0,
+  "limitations": [
+    "人工种子集，不是盲测或模型准确率",
+    "只执行路由，不执行后续收费或修改动作",
+    "夹具只覆盖任务状态/显式旧版/多版歧义；其他上下文能力未模拟，不能判完整用例通过",
+    "零新增任务/模型记录只证明当前路由端点，不证明全链路无副作用"
+  ]
+}

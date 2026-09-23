@@ -58,7 +58,7 @@ def test_export_ratio_and_watermark_are_independent(tmp_path,spec,count,width):
                 assert part.size==(800,600)
                 assert ImageChops.difference(part,clean.crop((800*i,0,800*(i+1),600))).getbbox() is None
     prompt=build_visual_prompt(plan)
-    assert plan["layout"]["id"] in prompt
+    assert "主体放在画面" in prompt
     assert "全宽分成五个等宽构图区域" not in prompt
     assert "底部黑色渐变" not in prompt
 

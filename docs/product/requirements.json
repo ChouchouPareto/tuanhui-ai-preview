@@ -1,0 +1,351 @@
+{
+  "schema_version": "requirements-v1",
+  "baseline_commit": "64deee5",
+  "updated_at": "2026-09-21",
+  "scope_note": "状态按整项范围标注；已有代码不等于本轮验证，文档校验不等于业务验收。",
+  "requirements": [
+    {
+      "id": "R01",
+      "title": "首页、输入与照片预览",
+      "implementation": "code_exists",
+      "verification": "historical_report_only",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "frontend/app/page.tsx"
+      ],
+      "next_delivery": "跨屏幕、键盘、长对话回归；不把既有代码当本轮验收"
+    },
+    {
+      "id": "R02",
+      "title": "意图、对象与动作路由",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "backend/app/services/dialogue_routing.py",
+        "backend/tests/test_dialogue_routing.py",
+        "docs/technical/对话安全路由首轮修复_2026-09-15.md",
+        "backend/tests/test_p0_entry_pe.py",
+        "frontend/tests/p0-entry-smoke.mjs",
+        "backend/app/services/agent_runtime.py",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "已接受控千问提案、证据校验与本地安全门；专业/全案真实过度澄清已修PE分支但未付费复验，完整语义路由仍未完成"
+    },
+    {
+      "id": "R03",
+      "title": "最少追问与上下文",
+      "implementation": "partial",
+      "verification": "static_review",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/services/intake.py"
+      ],
+      "next_delivery": "统一事实必要性与多轮修正作用域"
+    },
+    {
+      "id": "R04",
+      "title": "授权、预算与幂等",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/api.py",
+        "backend/app/services/generation_contract.py",
+        "backend/app/services/professional_queue.py",
+        "backend/tests/test_professional_queue.py",
+        "backend/tests/test_generation_contract.py",
+        "backend/tests/test_dialogue_routing.py",
+        "docs/technical/对话安全路由首轮修复_2026-09-15.md",
+        "backend/tests/test_p0_entry_pe.py",
+        "frontend/tests/p0-entry-smoke.mjs"
+      ],
+      "next_delivery": "R7 现有专业页绑定ID/hash与稳定防重键；旧失败任务只读查看，不因键升级重发。统一金额/有效期授权、不可变素材副本与未知任务核对仍待完成"
+    },
+    {
+      "id": "R05",
+      "title": "故障检查与恢复",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/services/image_generation.py",
+        "backend/app/services/dialogue_routing.py",
+        "backend/tests/test_dialogue_routing.py",
+        "backend/tests/test_p0_entry_pe.py"
+      ],
+      "next_delivery": "R7 调用前精确请求、模型返回原图、失败审计已留证；无成品不推荐不存在预览。真实视觉诊断、旧图兼容处理和模型质量验收待做"
+    },
+    {
+      "id": "R06",
+      "title": "修改与版本",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "backend/app/canvas_api.py",
+        "backend/app/services/canvas.py",
+        "backend/tests/test_native_canvas.py",
+        "backend/app/api.py",
+        "backend/app/services/intake.py",
+        "backend/tests/test_dialogue_routing.py",
+        "frontend/app/editor/page.tsx",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "结构编辑临时前端接入文字/坐标/颜色/锁定/恢复/复制和导出，Chrome真实API改字通过；通用局部视觉修改未实现"
+    },
+    {
+      "id": "R07",
+      "title": "素材语义与事实证据",
+      "implementation": "partial",
+      "verification": "static_review",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/services/intake.py"
+      ],
+      "next_delivery": "接通多模态角色复核与来源证据"
+    },
+    {
+      "id": "R08",
+      "title": "图片输出合同",
+      "implementation": "code_exists",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/services/design_plan.py",
+        "backend/tests/test_p0_entry_pe.py"
+      ],
+      "next_delivery": "R7 输出与素材元素误判回归通过，专业API可选单项输出；20:3/12:3/4:3合同保留，真实平台上传验收待做"
+    },
+    {
+      "id": "R09",
+      "title": "专属内容、文案和排字",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/services/image_generation.py",
+        "backend/tests/test_p0_entry_pe.py"
+      ],
+      "next_delivery": "R7 生图坐标与程序排字同源，风格词不再进入已知业务事实；真实模型是否遵守无字/留白要求、文案吸引力仍待实测"
+    },
+    {
+      "id": "R10",
+      "title": "项目、历史及预览下载",
+      "implementation": "code_exists",
+      "verification": "historical_report_only",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "frontend/app/page.tsx"
+      ],
+      "next_delivery": "多入口与历史版本浏览器回归"
+    },
+    {
+      "id": "R11",
+      "title": "任务计量与性能",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "backend/app/services/image_generation.py",
+        "backend/tests/test_p0_entry_pe.py",
+        "backend/app/services/agent_runtime.py",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "父/子阶段时长和用量已记录并显示；真实一键墙钟14.18秒，样本不足，不宣称三分钟SLA"
+    },
+    {
+      "id": "R12",
+      "title": "专业版基础修复",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "frontend/app/page.tsx",
+        "backend/app/services/generation_contract.py",
+        "backend/tests/test_generation_contract.py",
+        "docs/technical/专业生成方案冻结与执行防重_2026-09-18.md",
+        "backend/tests/test_p0_entry_pe.py",
+        "frontend/tests/p0-entry-smoke.mjs",
+        "frontend/app/create/page.tsx",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "专业简洁功能入口不依赖旧通用必填流程，保留入口类型与AI示意；真实父模型曾过度追问，PE修后未复验"
+    },
+    {
+      "id": "R13",
+      "title": "类目与PE框架",
+      "implementation": "partial",
+      "verification": "static_review",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "docs/pe/Input-Output完整PE工程与类目架构审核_v0.10.1.md",
+        "backend/tests/test_p0_entry_pe.py"
+      ],
+      "next_delivery": "R7 去除非餐饮/Logo强制食物风格，坐标约束共用计划；仍需二级类目策略及各类目实测，不能宣称非餐饮全部支持"
+    },
+    {
+      "id": "R14",
+      "title": "正式构图库与案例拆解",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "docs/pe/构图模板与PE审核_v0.10.0.md",
+        "backend/app/agent_api.py",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "已有坐标示意与按指纹审核记录可操作；稿定案例拆解、Figma、正式发布门禁和全输出去重仍未完成"
+    },
+    {
+      "id": "R15",
+      "title": "编辑器与无限画布",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "backend/app/canvas_schemas.py",
+        "backend/app/canvas_api.py",
+        "backend/tests/test_native_canvas.py",
+        "frontend/app/editor/page.tsx",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "基础多画板位置、缩放/视口保存、对象编辑接入；不是完整无限画布，无多人/虚拟化/完整专业快捷键，正式设计后审"
+    },
+    {
+      "id": "R16",
+      "title": "全案正式界面与父子Agent",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "docs/technical/产品全貌与开发总纲_2026-09-15_v0.12.0.md",
+        "backend/tests/test_p0_entry_pe.py",
+        "frontend/tests/p0-entry-smoke.mjs",
+        "backend/app/services/agent_runtime.py",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "持久父任务与可选文案子任务、程序规划/生图/质检接通；全案选择保持隔离，正式设计/完整语义矩阵/修后真实验收未完成"
+    },
+    {
+      "id": "R17",
+      "title": "生产安全与部署",
+      "implementation": "partial",
+      "verification": "static_review",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "backend/app/api.py",
+        "backend/app/core/admin_access.py",
+        "backend/tests/test_admin_access.py",
+        "frontend/proxy.ts",
+        "docs/technical/前台创作与内部后台拆分_2026-09-21.md"
+      ],
+      "next_delivery": "R9已实现独立内部后台的本地单管理员门禁；商家登录、多租户、文件授权、生产HTTPS/SSO与审计仍待上线专项"
+    },
+    {
+      "id": "R18",
+      "title": "商业化与商家后台",
+      "implementation": "pending_decision",
+      "verification": "not_run",
+      "sources": [
+        "S02"
+      ],
+      "evidence": [
+        "团绘AI_PRD_v0.8_项目化创作与商业闭环评审版.md"
+      ],
+      "next_delivery": "重确认订阅、积分、售后、发布及后台范围"
+    },
+    {
+      "id": "R19",
+      "title": "PRD持续迭代和课程接入",
+      "implementation": "partial",
+      "verification": "static_review",
+      "sources": [
+        "S01",
+        "S03"
+      ],
+      "evidence": [
+        "docs/product/迭代与文档规范.md"
+      ],
+      "next_delivery": "本轮文档主线与校验已建；课程尚未提供"
+    },
+    {
+      "id": "R20",
+      "title": "评测与模型选型",
+      "implementation": "partial",
+      "verification": "offline_passed",
+      "sources": [
+        "S01",
+        "S03",
+        "S12"
+      ],
+      "evidence": [
+        "docs/evaluation/评测与验收方案.md",
+        "scripts/evaluate_intent.py",
+        "backend/tests/test_intent_evaluator.py",
+        "docs/evaluation/runs/20260917T162457.083106Z_0cbeef60.json",
+        "scripts/accept_workbench.py",
+        "docs/technical/千问受控编排与功能工作台_2026-09-21.md"
+      ],
+      "next_delivery": "R8真实3次语言+1次图片不重试：一键技术成功，专业/全案因PE混用过度澄清；280后端测试通过，未完成独立美术质量评测"
+    }
+  ]
+}

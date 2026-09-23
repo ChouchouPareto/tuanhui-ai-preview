@@ -1,0 +1,26 @@
+{
+  "schema_version": "product-docs-manifest-v1",
+  "managed_files": [
+    "docs/technical/持久队列与路由实测_2026-09-18.md",
+    "docs/technical/专业生成方案冻结与执行防重_2026-09-18.md",
+    "AGENTS.md",
+    "PRD.md",
+    "docs/product/README.md",
+    "docs/product/requirements.json",
+    "docs/product/CHANGELOG.md",
+    "docs/product/来源与课程接入.md",
+    "docs/product/迭代与文档规范.md",
+    "docs/product/document-manifest.json",
+    "docs/design/专业画布_小云雀参考拆解与审核计划.md",
+    "docs/architecture/搭建逻辑与决策记录.md",
+    "docs/architecture/后端技术适配声明.md",
+    "docs/technical/后端阶段一_可编辑对象与受控修改.md",
+    "docs/pe/原生对象与局部修改约束_v0.13.0.md",
+    "docs/models/模型选型与成本测算.md",
+    "docs/evaluation/评测与验收方案.md",
+    "docs/evaluation/intent_cases.json",
+    "docs/technical/产品全貌与开发总纲_2026-09-15_v0.12.0.md",
+    "docs/technical/对话安全路由首轮修复_2026-09-15.md",
+    "docs/pe/对话意图与动作路由_PE设计_2026-09-15_v0.12.0.md"
+  ]
+}

@@ -26,10 +26,76 @@ class Creation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class DialogueTurn(Base):
+    __tablename__ = "dialogue_turns"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), index=True)
+    creation_id: Mapped[str | None] = mapped_column(ForeignKey("creations.id"), nullable=True)
+    task_id: Mapped[str | None] = mapped_column(ForeignKey("workflow_tasks.id"), nullable=True)
+    text: Mapped[str] = mapped_column(Text)
+    response: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class CanvasDocument(Base):
+    __tablename__ = "canvas_documents"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    head_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    source: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class CanvasVersion(Base):
+    __tablename__ = "canvas_versions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    document_id: Mapped[str] = mapped_column(ForeignKey("canvas_documents.id"), index=True)
+    parent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    content: Mapped[dict] = mapped_column(JSON)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    render_manifest: Mapped[dict] = mapped_column(JSON, default=dict)
+    reason: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class CanvasMutation(Base):
+    __tablename__ = "canvas_mutations"
+    __table_args__ = (UniqueConstraint("document_id", "request_key"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    document_id: Mapped[str] = mapped_column(ForeignKey("canvas_documents.id"), index=True)
+    request_key: Mapped[str] = mapped_column(String(120))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    version_id: Mapped[str] = mapped_column(ForeignKey("canvas_versions.id"))
+
+
+class CanvasProposal(Base):
+    __tablename__ = "canvas_proposals"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    document_id: Mapped[str] = mapped_column(ForeignKey("canvas_documents.id"), index=True)
+    base_version_id: Mapped[str] = mapped_column(ForeignKey("canvas_versions.id"))
+    proposal: Mapped[dict] = mapped_column(JSON)
+    applied_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class GenerationWorkerHeartbeat(Base):
     __tablename__ = "generation_worker_heartbeats"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ProfessionalGenerationJob(Base):
+    __tablename__ = "professional_generation_jobs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), index=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("workflow_tasks.id"), unique=True)
+    plan_id: Mapped[str] = mapped_column(ForeignKey("design_plans.id"))
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    state: Mapped[str] = mapped_column(String(30), default="QUEUED", index=True)
+    lease_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class IntakeRevision(Base):
@@ -218,3 +284,34 @@ class WorkflowEvent(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+    __table_args__ = (UniqueConstraint("project_id", "request_key"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), index=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("workflow_tasks.id"), unique=True)
+    request_key: Mapped[str] = mapped_column(String(120))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    request: Mapped[dict] = mapped_column(JSON)
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    state: Mapped[str] = mapped_column(String(30), default="QUEUED", index=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class WorkspaceState(Base):
+    __tablename__ = "workspace_states"
+    project_id: Mapped[str] = mapped_column(ForeignKey("store_projects.id"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=0)
+    content: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class TemplateReview(Base):
+    __tablename__ = "template_reviews"
+    template_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    template_hash: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(30), default="draft")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

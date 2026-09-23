@@ -98,4 +98,4 @@ def test_brand_only_illustration_does_not_repeat_store_question(client, monkeypa
     with SessionLocal() as db:
         plan = db.scalar(select(DesignPlan)).plan
         assert plan["copy"]["store_name"] == "袁记云饺"
-        assert "不代表真实菜单" in build_visual_prompt(plan)
+        assert "袁记云饺" not in build_visual_prompt(plan)

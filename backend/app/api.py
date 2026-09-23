@@ -15,6 +15,7 @@ from app.models import ClarificationRound, DesignPlan, FactVersion, ProjectStatu
 from app.schemas import AnalysisRunRequest, AssetMetadataUpdate, ClarificationSubmit, DesignPlanConfirm, DesignPlanCreate, DesignPlanUpdate, FactConfirm, FactUpdate, GenerationRunRequest, ProjectCreate
 from app.services.analysis import coverage_for, merge_answers, run_analysis, run_dialogue_intake
 from app.services.design_plan import build_design_plan, update_design_plan
+from app.services.generation_contract import lock_project, plan_digest, reject, reserve_generation
 from app.services.image_generation import run_generation
 from app.services.storage import store_upload
 from app.models import ProjectDisplayState, Creation, CreationConfirmation, IntakeRevision
@@ -326,20 +327,34 @@ def confirm_facts(project_id: str, version: int, payload: FactConfirm, db: Sessi
 
 
 def design_plan_payload(item: DesignPlan) -> dict:
-    return {"id": item.id, "project_id": item.project_id, "fact_version": item.fact_version, "version": item.version, "status": item.status, "plan": item.plan, "confirmed_at": item.confirmed_at}
+    return {"id": item.id, "project_id": item.project_id, "fact_version": item.fact_version, "version": item.version, "status": item.status, "plan": item.plan, "plan_hash": plan_digest(item.plan), "confirmed_at": item.confirmed_at}
 
 
 @router.post("/projects/{project_id}/design-plans", status_code=201)
 def create_design_plan(project_id: str, payload: DesignPlanCreate | None = None, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
+    from app.services.creative_workflow import reserve_context
+    from app.services.master_layout import eligible_dishes
+    recent = reserve_context(db, project_id)
+    db.refresh(project)
     fact = db.scalar(select(FactVersion).where(FactVersion.project_id == project_id, FactVersion.version == project.current_fact_version))
     if fact is None or fact.confirmed_at is None:
         raise HTTPException(status_code=409, detail="请先确认并锁定经营事实")
     latest = db.scalar(select(DesignPlan).where(DesignPlan.project_id == project_id).order_by(DesignPlan.version.desc()))
-    if latest and latest.fact_version == fact.version and latest.status == "DRAFT":
-        return design_plan_payload(latest)
+    output_type = payload.output_type if payload else "five_panel"
+    render_mode = "illustration" if output_type == "logo" else payload.render_mode if payload else "real_assets"
     style = payload.style if payload else "appetite"
-    item = DesignPlan(project_id=project_id, fact_version=fact.version, version=1 if latest is None else latest.version + 1, plan=build_design_plan(fact.facts, style))
+    if (latest and latest.fact_version == fact.version and latest.status == "DRAFT"
+        and latest.plan.get("output_type", "five_panel") == output_type
+        and latest.plan.get("render_mode", "real_assets") == render_mode
+        and latest.plan.get("style", {}).get("key") == style):
+        return design_plan_payload(latest)
+    dishes = eligible_dishes(db.scalars(select(SourceAsset).where(SourceAsset.project_id == project_id)).all())
+    item = DesignPlan(project_id=project_id, fact_version=fact.version, version=1 if latest is None else latest.version + 1,
+                      plan=build_design_plan(fact.facts, style, output_type=output_type, asset_count=len(dishes) if render_mode == "real_assets" else 0,
+                                             excluded_ids=recent, selection_key=str(uuid.uuid4())))
+    item.plan.update(render_mode=render_mode, entry_mode="professional",
+                     selected_asset_ids=[a.id for a in dishes] if render_mode == "real_assets" else [])
     db.add(item)
     project.status = ProjectStatus.DESIGN_PLAN_DRAFT
     db.commit()
@@ -355,9 +370,19 @@ def get_latest_design_plan(project_id: str, db: Session = Depends(get_db)):
     return design_plan_payload(item)
 
 
+@router.get("/projects/{project_id}/design-plans/{plan_id}")
+def get_design_plan(project_id: str, plan_id: str, db: Session = Depends(get_db)):
+    require_project(db, project_id)
+    item = db.get(DesignPlan, plan_id)
+    if item is None or item.project_id != project_id:
+        raise HTTPException(status_code=404, detail="设计方案不存在")
+    return design_plan_payload(item)
+
+
 @router.patch("/projects/{project_id}/design-plans/{plan_id}")
 def patch_design_plan(project_id: str, plan_id: str, payload: DesignPlanUpdate, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
+    lock_project(db, project_id)
     item = db.get(DesignPlan, plan_id)
     if item is None or item.project_id != project_id:
         raise HTTPException(status_code=404, detail="设计方案不存在")
@@ -373,11 +398,22 @@ def patch_design_plan(project_id: str, plan_id: str, payload: DesignPlanUpdate, 
 @router.post("/projects/{project_id}/design-plans/{plan_id}/confirm")
 def confirm_design_plan(project_id: str, plan_id: str, payload: DesignPlanConfirm, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
+    lock_project(db, project_id)
+    db.refresh(project)
     item = db.get(DesignPlan, plan_id)
     if item is None or item.project_id != project_id:
         raise HTTPException(status_code=404, detail="设计方案不存在")
     if not payload.confirmed:
         raise HTTPException(status_code=422, detail="必须明确确认后才能开始生图")
+    if payload.plan_hash and payload.plan_hash != plan_digest(item.plan):
+        reject("PLAN_CHANGED", "方案已变化，请重新查看后确认。")
+    if item.fact_version != project.current_fact_version:
+        reject("FACT_VERSION_CHANGED", "经营事实已更新，请重新创建并审核方案。")
+    from app.services.design_plan import validate_design_plan
+    try:
+        validate_design_plan(item.plan)
+    except (ValueError, KeyError, TypeError) as exc:
+        reject("INVALID_DESIGN_PLAN", f"方案检查未通过：{exc}", 422)
     item.status = "CONFIRMED"
     item.confirmed_at = utc_now()
     project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
@@ -397,35 +433,12 @@ def execute_generation(project_id: str, task_id: str, plan_id: str, provider: st
 @router.post("/projects/{project_id}/generation-runs", status_code=202)
 def start_generation(project_id: str, background: BackgroundTasks, payload: GenerationRunRequest, db: Session = Depends(get_db)):
     project = require_project(db, project_id)
-    from app.services.creative_workflow import reserve_context
-    from app.services.layout_catalog import select_layout
-    from app.services.master_layout import eligible_dishes
-    recent = reserve_context(db, project_id)
-    plan = db.scalar(select(DesignPlan).where(DesignPlan.project_id == project_id).order_by(DesignPlan.version.desc()))
-    if plan is None or plan.status != "CONFIRMED":
-        raise HTTPException(status_code=409, detail="请先确认五图设计方案")
-    active = db.scalar(select(WorkflowTask).where(WorkflowTask.project_id == project_id,
-        WorkflowTask.task_type == "group_buying_image_generation", WorkflowTask.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING])).order_by(WorkflowTask.created_at.desc()))
-    if active:
-        db.rollback()
-        return {"task_id": active.id, "status": active.status, "provider": payload.provider, "allow_fallback": payload.allow_fallback}
-    if plan.plan.get("deliverables"):
-        db.rollback()
-        raise HTTPException(status_code=409, detail="全案或多张详情页请在一键生图中继续创作，先确认本次包含的项目及调用次数。")
-    if plan.plan.get("template_version") == "region-master-v3":
-        data = copy.deepcopy(plan.plan)
-        dishes = eligible_dishes(db.scalars(select(SourceAsset).where(SourceAsset.project_id == project_id)).all())
-        if data.get("output_type", "five_panel") in {"five_panel", "three_panel"}:
-            data["layout"] = select_layout(data["locked_facts"], data.get("output_type", "five_panel"), len(dishes), excluded_ids=recent, selection_key=str(uuid.uuid4()))
-        plan = DesignPlan(project_id=project_id, fact_version=plan.fact_version, version=plan.version+1,
-                          status="CONFIRMED", confirmed_at=utc_now(), plan=data)
-        db.add(plan); db.flush()
-    task = WorkflowTask(project_id=project_id, task_type="group_buying_image_generation")
-    task.result = {"design_plan_id": plan.id}
-    db.add(task)
-    db.commit()
-    background.add_task(execute_generation, project_id, task.id, plan.id, payload.provider, payload.allow_fallback)
-    return {"task_id": task.id, "status": task.status, "provider": payload.provider, "allow_fallback": payload.allow_fallback}
+    task, plan, created = reserve_generation(db, project, payload)
+    # The committed job is claimed by the durable worker, not this API process.
+    contract = task.result["generation_contract"]
+    return {"task_id": task.id, "status": task.status, "provider": contract["provider"],
+            "allow_fallback": False, "plan_id": plan.id, "plan_hash": contract["plan_hash"],
+            "binding_mode": contract["binding_mode"], "replayed": not created}
 
 
 @router.post("/tasks/{task_id}/pause")
@@ -440,7 +453,11 @@ def pause_generation(task_id: str, db: Session = Depends(get_db)):
     was_queued = task.status == TaskStatus.PENDING
     task.status = TaskStatus.NEEDS_USER
     task.error_code = "PAUSED_BY_USER"
-    task.error_message = "已暂停；继续生成会重新发起模型调用"
+    task.error_message = "已停止后续处理；已发出的请求可能仍会计费，不会自动重试。"
+    from sqlalchemy import update
+    from app.models import ProfessionalGenerationJob
+    db.execute(update(ProfessionalGenerationJob).where(ProfessionalGenerationJob.task_id == task.id,
+        ProfessionalGenerationJob.state.in_(["QUEUED", "RUNNING"])).values(state="PAUSED", lease_until=None))
     for entry in task.result.get("deliverables", []):
         child = db.get(WorkflowTask, entry.get("task_id"))
         if child and child.project_id == task.project_id and child.status in {TaskStatus.PENDING, TaskStatus.RUNNING}:

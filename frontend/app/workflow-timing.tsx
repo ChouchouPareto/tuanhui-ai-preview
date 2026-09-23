@@ -2,7 +2,7 @@ import { useWorkflowTiming } from "../lib/use-workflow-timing";
 export function WorkflowTiming({ path, active }: { path: string | null; active: boolean }) {
   const timing = useWorkflowTiming(path, active);
   if (!timing) return active ? <p className="workflowTiming">正在连接服务，计时信息加载中…</p> : null;
-  const label = ({ understanding: "理解需求", queue: "排队", generation: "生成全流程", image_model: "生成画面", layout_export: "排版与导出" } as Record<string, string>)[timing.stage] || "处理中";
+  const label = ({ agent_queue: "对话排队", agent_workflow: "需求处理", parent: "千问理解", copy: "文案子任务", understanding: "理解需求", queue: "排队", generation: "生图与后处理", image_model: "生成画面", layout_export: "排版与导出" } as Record<string, string>)[timing.stage] || "处理中";
   const range = timing.estimate?.range_ms;
   const running = timing.state === "running";
   const duration = timing.seconds === null ? "耗时暂不可用" : `${running ? "已用" : "用时"} ${timing.seconds} 秒`;

@@ -8,6 +8,12 @@ from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = [
+    "backend/app/agent_schemas.py", "backend/app/agent_api.py", "backend/app/services/agent_runtime.py",
+    "backend/app/services/professional_queue.py", "backend/app/worker.py",
+    "backend/app/services/generation_contract.py",
+    "backend/app/canvas_schemas.py", "backend/app/canvas_api.py",
+    "backend/app/services/canvas.py", "backend/app/services/canvas_render.py",
+    "backend/app/dialogue_api.py", "backend/app/services/dialogue_routing.py",
     "backend/app/api.py", "backend/app/models.py", "backend/app/core/config.py", "backend/app/services/output_contract.py",
     "backend/app/services/design_plan.py", "backend/app/services/layout_catalog.py",
     "backend/app/services/copy_policy.py", "backend/app/services/image_generation.py",

@@ -33,6 +33,8 @@ class IntakeInput(BaseModel):
     style: Literal["appetite", "brand", "street", "minimal"] = "appetite"
     provider: Literal["qwen", "doubao"] = "qwen"
     use_ai: bool = False
+    local_only: bool = False
+    output_selection: Literal["auto", "explicit"] = "auto"
     allow_illustration: bool = False
     accepted_understanding_policy: Literal["text-understanding-paid-v1"] | None = None
     input_mode: Literal["merge", "replace", "reply", "chat"] = "merge"
@@ -153,6 +155,11 @@ def conversation_reply(gaps, facts):
 
 
 def compile_intake(db, creation, payload):
+    from app.services.dialogue_routing import guard_intake_message
+    # Gate the current message, before any model call or merging it into old facts.
+    if payload.text.strip():
+        previous = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
+        guard_intake_message(payload.text, has_result=bool(previous and previous.snapshot.get("parent_creation_id")))
     if payload.use_ai and not payload.accepted_understanding_policy:
         fail("AI_AUTHORIZATION_REQUIRED", "智能理解需先明确同意本次模型费用，不会自动调用")
     if any(key not in LABELS or len(value) > 500 for key, value in payload.answers.items()):
@@ -161,7 +168,11 @@ def compile_intake(db, creation, payload):
     message = payload.text.strip()
     output_type = payload.output_type or (old.snapshot.get("output_type", "five_panel") if old else "five_panel")
     from app.services.output_contract import detect_output, NAMES
-    output_type = detect_output(message, output_type)
+    try:
+        if payload.output_selection != "explicit":
+            output_type = detect_output(message, output_type)
+    except ValueError as exc:
+        fail("OUTPUT_NEEDS_CLARIFICATION", str(exc))
     delivery_types = [output_type]
     if output_type == "full_plan":
         delivery_types = payload.delivery_types or (old.snapshot.get("delivery_types") if old and old.snapshot.get("output_type") == "full_plan" else None) or ["voucher_main", "five_panel", "logo"]
@@ -189,6 +200,8 @@ def compile_intake(db, creation, payload):
     copy_edit = parse_copy_edit(message) if old and old.snapshot.get("parent_creation_id") and output_type != "full_plan" and len(delivery_types) == 1 else None
     if copy_edit and (manifest != old.snapshot.get("assets") or payload.style != old.snapshot.get("style") or output_type != old.snapshot.get("output_type", "five_panel")):
         copy_edit = None  # A changed asset/style is not a text-only request.
+    if payload.local_only and not copy_edit:
+        fail("LOCAL_EDIT_UNAVAILABLE", "这次修改不能按纯文字处理，尚未调用模型。请保留素材和风格，或明确提出新的生图要求。")
     creative_draft = None
     style_hint = None
     if payload.use_ai and not copy_edit:
@@ -202,6 +215,11 @@ def compile_intake(db, creation, payload):
         uncertain = understood["uncertain_fields"]
         creative_draft = understood.get("creative_draft")
         style_hint = understood.get("style_hint")
+        # Exact visual preset labels are not merchant facts, even if a model
+        # incorrectly places them in an otherwise evidence-backed field.
+        for key in ("positioning", "selling_points"):
+            if extracted.get(key) in ("清爽简约", "烟火市井", "温馨烟火", "品牌质感", "食欲冲击", "智能匹配"):
+                extracted.pop(key, None)
         for key in uncertain:
             extracted.pop(key, None)
             facts.pop(key, None)
@@ -223,7 +241,7 @@ def compile_intake(db, creation, payload):
     facts.update({key: value.strip() for key, value in payload.answers.items()})
     sources.update({key: "user_answer" for key in payload.answers})
     show_price = payload.show_price
-    show_store = payload.show_store_name if payload.show_store_name is not None else (bool(facts.get("store_name")) if creation.mode == "oneclick" else True)
+    show_store = payload.show_store_name if payload.show_store_name is not None else bool(facts.get("store_name"))
     if payload.input_mode != "merge":
         show_price = bool(extracted.get("hero_price")) if payload.input_mode in {"replace", "chat"} else bool(old and old.snapshot["show_price"])
         show_store = show_store if payload.input_mode in {"replace", "chat"} else bool(old and old.snapshot["show_store_name"])
@@ -248,14 +266,14 @@ def compile_intake(db, creation, payload):
         design_style = style_hint
     # Explicit UI policy: absent usable photos may use a labelled illustration.
     # Older clients retain their original real-photo requirement.
-    illustration = payload.allow_illustration and creation.mode == "oneclick" and not any(a["usage"] == "renderable" for a in manifest)
+    illustration = payload.allow_illustration and not any(a["usage"] == "renderable" for a in manifest)
     if chat:
         for clause in re.split(r"[\n；;，,。！!]", text):
             if re.fullmatch(r"(?:请)?(?:使用|做|生成|改成|选择|先做)\s*AI\s*示意图", clause.strip(), re.I):
                 illustration = True
             elif re.search(r"(?:不用|不要|不做|不使用)(?:使用|做|生成)?\s*AI\s*示意图|使用真实照片", clause, re.I):
                 illustration = False
-    gaps = evaluate(facts, manifest, bool(show_price), show_store, asset_led=creation.mode == "oneclick")
+    gaps = evaluate(facts, manifest, bool(show_price), show_store, asset_led=True)
     if illustration:
         gaps = [g for g in gaps if g["field"] != "assets"]
         if facts.get("store_name"):
@@ -288,5 +306,6 @@ def compile_intake(db, creation, payload):
 
 def review(db, creation):
     item = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id, IntakeRevision.revision == creation.revision))
-    return {"creation_id": creation.id, "revision": creation.revision, "status": creation.status, "project_name": db.get(StoreProject, creation.project_id).name,
+    entry = "fullplan" if item and item.snapshot.get("output_type") == "full_plan" else "professional" if creation.mode == "pro" else "oneclick"
+    return {"creation_id": creation.id, "entry_mode": entry, "revision": creation.revision, "status": creation.status, "project_name": db.get(StoreProject, creation.project_id).name,
             "snapshot_hash": item.snapshot_hash if item else "", "snapshot": item.snapshot if item else None}

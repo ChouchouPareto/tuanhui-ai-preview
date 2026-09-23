@@ -6,7 +6,7 @@ type Activity = { server_time: string; current: Span | null; spans: Span[] };
 // Server timestamps survive refresh. Polling never starts a paid operation.
 export function useWorkflowTiming(path: string | null, active: boolean) {
   const [data, setData] = useState<(Activity & { path: string; offset: number }) | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!path) return;
     let stopped = false;

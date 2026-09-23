@@ -2,13 +2,14 @@ import base64
 import io
 import json
 from hashlib import sha256
+import re
 import time
 from pathlib import Path
 from contextvars import ContextVar
 
 import httpx
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -51,23 +52,35 @@ def _reference_data(asset: SourceAsset) -> str:
 
 def build_visual_prompt(plan: dict) -> str:
     if plan.get("template_version") == "region-master-v3":
-        from app.services.master_layout import PALETTES
-        instructions = (Path(__file__).with_name("prompts") / "generation_v3.md").read_text(encoding="utf-8")
-        # The template is trusted control data; store facts are untrusted task data.
-        instructions += "\n画布比例：" + plan["canvas"]["ratio"]
-        from app.services.creative_workflow import compact_layout
-        instructions += "\n已选择构图（必须遵守）：" + json.dumps(compact_layout(plan["layout"]), ensure_ascii=False, separators=(",", ":"))
-        instructions += "\n任务资料：" + json.dumps({
-            "style": plan["style"],
-            "text_color": PALETTES.get(plan["style"]["key"], PALETTES["appetite"])[1],
-            "creative_subject": plan["creative_direction"]["subject"],
-            "confirmed_brand_color": plan.get("brand_references", {}).get("brand_color"),
-        }, ensure_ascii=False)
+        # qwen-image transcribes long instructional/layout text onto the canvas and the
+        # local text guard rejects it. Keep the model prompt short and purely visual:
+        # facts, no-storefront, no-text and exact placement are already enforced by the
+        # program (text guard, region compositing, program typography).
+        style_visuals = {
+            "appetite": "高饱和暖色、明亮光泽、食物近景、热气氛围",
+            "brand": "品牌主色、克制留白、材质细节、精致质感",
+            "street": "暖棕底色、暖色光影、真实生活氛围",
+            "minimal": "浅色背景、大面积留白、简洁干净",
+        }
+        # The subject may embed prohibitions (e.g. logo「不绘制任何文字」); those belong
+        # to the global instructions, not to a drawable subject description.
+        subject = re.sub(r"(?:，|。)?\s*(?:不仿制已有商标|不绘制任何文字|不绘制文字|不含任何文字|不代表真实|不冒充)[^，。]*", "",
+                         str(plan.get("creative_direction", {}).get("subject") or "").strip())
+        ratio = plan["canvas"]["ratio"]
+        style = style_visuals.get(plan["style"]["key"], style_visuals["appetite"])
+        if plan.get("category", {}).get("primary") != "food" or plan.get("output_type") == "logo":
+            style = style.replace("食物近景、热气氛围", "主题近景、统一光线")
+        def position(box):
+            x, y, w, h = box
+            return f"横向{x:.0%}—{x+w:.0%}、纵向{y:.0%}—{y+h:.0%}"
+        regions = plan["layout"]["regions"]
+        visuals = "；".join(position(r["box"]) for r in regions if r["role"] == "visual")
+        blanks = "；".join(position(r["box"]) for r in regions if r["role"] == "copy")
+        placement = f"主体放在画面这些范围内：{visuals}；{blanks}只保留纯净背景，无主体或装饰。坐标仅供定位，不绘制坐标或区域框"
+        no_text = "不出现任何文字、字母、数字、符号或水印"
         if plan.get("render_mode") != "illustration":
-            instructions += "\n本次为真实照片排版：只生成统一背景和装饰，visual区域留给本地真实素材，不绘制食物、餐具或额外产品。"
-        else:
-            instructions += "\n本次为示意设计：按visual区域安排主题静物，不等分为五个或三个场景。"
-        return instructions
+            return f"{ratio}横向纯背景纹理，{style}，整体低对比度、大面积干净留白；{no_text}，也不要食物、菜品、餐具或人物。"
+        return f"{ratio}横向商业主题插画，主体是{subject}，{style}；{placement}；{no_text}。"
     if plan.get("render_mode") == "illustration":
         from app.services.design_plan import creative_direction
         direction = plan.get("creative_direction") or creative_direction(plan["locked_facts"])
@@ -162,16 +175,74 @@ def _font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
+def save_generation_request(plan: dict, output_dir: Path, provider=None):
+    """Persist the exact compiler result before billing, including failed tasks."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    prompt = build_visual_prompt(plan)
+    record = {
+        "schema_version": "generation-request-v1", "prompt": prompt,
+        "prompt_sha256": sha256(prompt.encode()).hexdigest(),
+        "plan": plan, "provider": provider, "requested_size": request_size(plan),
+        "model": settings.qwen_image_model if provider == "qwen" else settings.doubao_image_model if provider == "doubao" else None,
+        "model_input_assets": [], "prompt_compiler": "region-coordinates-v1",
+        "quality_checks": {"semantic_visual_review": "not_automated"},
+    }
+    # Tasks have separate directories; never replace the original submitted request.
+    target = output_dir / "generation-request.json"
+    if not target.exists():
+        with target.open("x", encoding="utf-8") as stream:
+            json.dump(record, stream, ensure_ascii=False, indent=2)
+
+
 def render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()) -> dict:
+    try:
+        result = _render_and_slice(image_bytes, plan, output_dir, assets)
+    except (OSError, ValueError) as exc:
+        audit_path = output_dir / "generation-audit.json"
+        if audit_path.is_file():
+            try:
+                audit = json.loads(audit_path.read_text(encoding="utf-8"))
+                audit.update(status="failed", failed_stage="quality_or_export", error_type=type(exc).__name__)
+                audit_path.write_text(json.dumps(audit, ensure_ascii=False, indent=2), encoding="utf-8")
+            except (OSError, ValueError):
+                pass  # Keep the original exception, not a secondary audit error.
+        raise
+    audit_path = output_dir / "generation-audit.json"
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    audit["status"] = "succeeded"
+    audit_path.write_text(json.dumps(audit, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
+
+
+def _render_and_slice(image_bytes: bytes, plan: dict, output_dir: Path, assets=()) -> dict:
     validate_design_plan(plan)
     output_dir.mkdir(parents=True, exist_ok=True)
+    save_generation_request(plan, output_dir)
+    # This record survives OCR/decoding/layout failure; success replaces it below.
+    (output_dir / "generation-audit.json").write_text(json.dumps({
+        "contract": plan.get("template_version"), "prompt": build_visual_prompt(plan),
+        "status": "postprocessing", "layout_id": plan.get("layout", {}).get("id"),
+        "quality_checks": {"text_capacity": "not_checked", "semantic_visual_review": "not_automated"},
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "model-response.bin").write_bytes(image_bytes)
     with Image.open(io.BytesIO(image_bytes)) as source:
         source.convert("RGB").save(output_dir / "model-visual.png")
         if plan.get("template_version") == "region-master-v3":
             from app.services.text_guard import check_background
             check_background(output_dir / "model-visual.png")
-        canvas = compose_master(source, plan, assets, _font)
+            from app.services.master_layout import region_underlay
+            from app.services.canvas_render import render_scene, scene_from_plan
+            underlay = region_underlay(source, plan, assets)
+            scene = scene_from_plan(plan)
+            canvas, text_layout = render_scene(scene, _font, underlay)
+            underlay.save(output_dir / "typography-base.png", format="PNG")
+            (output_dir / "editable-scene.json").write_text(json.dumps({
+                "scene": scene.model_dump(mode="json"), "text_layout": text_layout,
+                "underlay_sha256": sha256((output_dir / "typography-base.png").read_bytes()).hexdigest(),
+                "visual_editability": "flattened_underlay", "text_editability": "native_objects",
+            }, ensure_ascii=False, indent=2), encoding="utf-8")
+        else:
+            canvas = compose_master(source, plan, assets, _font)
     save_manifest(output_dir, plan, assets)
     (output_dir / "generation-audit.json").write_text(json.dumps({
         "contract": plan.get("template_version"), "prompt": build_visual_prompt(plan),
@@ -212,6 +283,24 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
     db.refresh(task)
     if task.status != TaskStatus.PENDING:
         return
+    # A duplicate delivery must not pass a read-then-write PENDING check twice.
+    claimed = db.execute(update(WorkflowTask).where(WorkflowTask.id == task.id,
+        WorkflowTask.status == TaskStatus.PENDING).values(status=TaskStatus.RUNNING)
+        .execution_options(synchronize_session=False))
+    db.commit()
+    if not claimed.rowcount:
+        return
+    db.refresh(task)
+    contract = (task.result or {}).get("generation_contract")
+    if contract:
+        from app.services.generation_contract import execution_matches
+        db.refresh(plan)
+        db.refresh(project)
+        if not execution_matches(contract, project, plan, provider):
+            task.status, task.error_code = TaskStatus.NEEDS_USER, "EXECUTION_CONTRACT_CHANGED"
+            task.error_message = "方案、事实或模型与确认记录不一致，已阻止执行；请重新审核。"
+            db.commit()
+            return
     creation_id = plan.plan.get("creation_id")
     # Separate comparable workloads. This is a total pipeline cohort, not a model latency.
     model = settings.qwen_image_model if provider == "qwen" else settings.doubao_image_model
@@ -226,6 +315,12 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
         _run_generation(db, project, task, plan, provider, allow_fallback)
     finally:
         db.refresh(task)
+        if contract:
+            task.result = {**(task.result or {}), "generation_contract": contract}
+            if task.error_code == "ALL_PROVIDERS_FAILED":
+                task.status, task.error_code = TaskStatus.NEEDS_USER, "RECONCILING"
+                task.error_message = "模型请求未确认成功，请核对执行记录；不会自动重试或切换模型。"
+            db.commit()
         state = "completed" if task.status == TaskStatus.SUCCEEDED else "cancelled" if task.error_code == "PAUSED_BY_USER" else "failed"
         emit(db, project.id, task.id, "generation", state, creation_id=creation_id, model=cohort,
              duration_ms=max(1, int((time.monotonic()-started)*1000)), error_code=task.error_code)
@@ -234,7 +329,7 @@ def run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan:
 def _run_generation(db: Session, project: StoreProject, task: WorkflowTask, plan: DesignPlan, provider: str, allow_fallback: bool):
     from app.services.telemetry import emit
     db.refresh(task)
-    if task.status == TaskStatus.NEEDS_USER:
+    if task.status != TaskStatus.RUNNING:
         return
     if plan.plan.get("execution", {}).get("kind") == "bundle":
         return _run_bundle(db, project, task, plan, provider)
@@ -271,11 +366,11 @@ def _run_bundle(db, project, task, plan, provider):
         task.error_message = f"生成前检查未通过：{exc}"
         db.commit(); return
     task.status, task.progress = TaskStatus.RUNNING, 1
-    task.result = {"execution_kind":"bundle", "output_type":plan.plan["output_type"], "deliverables":[]}
+    task.result = {**(task.result or {}), "execution_kind":"bundle", "output_type":plan.plan["output_type"], "deliverables":[]}
     db.commit()
     for index, child in enumerate(deliveries):
         db.refresh(task)
-        if task.status == TaskStatus.NEEDS_USER:
+        if task.status != TaskStatus.RUNNING:
             return
         subtask = WorkflowTask(project_id=project.id, task_type="group_buying_image_generation_part",
             result={"parent_task_id":task.id, "output_type":child["output_type"]})
@@ -289,7 +384,7 @@ def _run_bundle(db, project, task, plan, provider):
         entries[-1].update(subtask.result, status=subtask.status.value)
         task.result = {**task.result,"deliverables":entries}
         task.progress = round((index+1)/len(deliveries)*100)
-        if task.status == TaskStatus.NEEDS_USER:
+        if task.status != TaskStatus.RUNNING:
             db.commit(); return
         if subtask.status != TaskStatus.SUCCEEDED:
             task.status, task.error_code = TaskStatus.FAILED_FINAL, "BATCH_PART_FAILED"
@@ -305,7 +400,7 @@ def _run_bundle(db, project, task, plan, provider):
 
 def _run_single(db, project, task, plan, provider, allow_fallback):
     from app.services.telemetry import emit
-    assets = db.scalars(select(SourceAsset).where(SourceAsset.project_id == project.id).order_by(SourceAsset.is_hero.desc(), SourceAsset.priority, SourceAsset.created_at)).all()
+    assets = db.scalars(select(SourceAsset).where(SourceAsset.project_id == project.id).order_by(SourceAsset.is_hero.desc(), SourceAsset.priority, SourceAsset.created_at, SourceAsset.id)).all()
     if "selected_asset_ids" in plan.plan:
         assets = [a for a in assets if a.id in plan.plan["selected_asset_ids"]]
     dishes = eligible_dishes(assets)
@@ -329,11 +424,17 @@ def _run_single(db, project, task, plan, provider, allow_fallback):
         emit(db, project.id, task.id, "layout_export", "started", creation_id=plan.plan.get("creation_id"))
         try:
             result = render_and_slice(source.read_bytes(), plan.plan, settings.generated_dir / project.id / task.id, dishes)
-            task.result = {**result, "provider": "local", "model": "program-typography", "design_plan_id": plan.id,
+            db.refresh(task)
+            if task.status != TaskStatus.RUNNING:
+                return
+            task.result = {**(task.result or {}), **result, "provider": "local", "model": "program-typography", "design_plan_id": plan.id,
                            "source_task_id": source_task.id, "image_model_calls": 0}
             task.status, task.progress = TaskStatus.SUCCEEDED, 100
             project.status = ProjectStatus.GENERATED
         except (OSError, ValueError) as exc:
+            db.refresh(task)
+            if task.status != TaskStatus.RUNNING:
+                return
             task.status = TaskStatus.FAILED_FINAL
             task.error_code, task.error_message = "LOCAL_EDIT_FAILED", f"本次文字修改未完成，未重新生图：{exc}"
         db.commit()
@@ -348,6 +449,7 @@ def _run_single(db, project, task, plan, provider, allow_fallback):
             detector_binary()  # Fail before billing if the required local checker is absent.
         compose_master(Image.new("RGB", (4000, 600)), plan.plan, dishes, _font)
         prompt = build_visual_prompt(plan.plan)
+        save_generation_request(plan.plan, settings.generated_dir / project.id / task.id, provider)
     except (OSError, ValueError) as exc:
         task.status = TaskStatus.FAILED_FINAL
         task.error_code = "MASTER_PREFLIGHT_FAILED"
@@ -358,12 +460,12 @@ def _run_single(db, project, task, plan, provider, allow_fallback):
     # No uploaded photos leave for background generation; compose real dishes locally.
     references = []
     providers = [provider]
-    if allow_fallback:
-        providers.append("doubao" if provider == "qwen" else "qwen")
+    # Legacy allow_fallback does not grant a second paid call. Unknown provider
+    # results require reconciliation, never automatic switching or regeneration.
     errors = []
     for candidate in list(dict.fromkeys(providers)):
         db.refresh(task)
-        if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
+        if task.status != TaskStatus.RUNNING:
             project.status = ProjectStatus.DESIGN_PLAN_CONFIRMED
             db.commit()
             return
@@ -385,7 +487,7 @@ def _run_single(db, project, task, plan, provider, allow_fallback):
             model_duration = max(1, int((time.monotonic()-phase_started)*1000))
             phase_event("completed")
             db.refresh(task)
-            if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
+            if task.status != TaskStatus.RUNNING:
                 record.status = "SUCCEEDED" if model_duration is not None else "CANCELLED"
                 record.error_code = None if model_duration is not None else "PAUSED_BY_USER"
                 record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
@@ -400,7 +502,7 @@ def _run_single(db, project, task, plan, provider, allow_fallback):
             result = render_and_slice(raw, plan.plan, settings.generated_dir / project.id / task.id, dishes)
             phase_event("completed")
             db.refresh(task)
-            if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
+            if task.status != TaskStatus.RUNNING:
                 record.status = "SUCCEEDED" if model_duration is not None else "CANCELLED"
                 record.error_code = None if model_duration is not None else "PAUSED_BY_USER"
                 record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)
@@ -411,14 +513,14 @@ def _run_single(db, project, task, plan, provider, allow_fallback):
             record.duration_ms = model_duration
             task.status = TaskStatus.SUCCEEDED
             task.progress = 100
-            task.result = {**result, "provider": candidate, "model": record.model, "design_plan_id": plan.id}
+            task.result = {**(task.result or {}), **result, "provider": candidate, "model": record.model, "design_plan_id": plan.id}
             project.status = ProjectStatus.GENERATED
             db.commit()
             return
         except (ImageGenerationError, httpx.HTTPError, OSError, ValueError) as exc:
             phase_event("failed", exc.code if isinstance(exc, ImageGenerationError) else "GENERATION_ERROR")
             db.refresh(task)
-            if task.status == TaskStatus.NEEDS_USER and task.error_code == "PAUSED_BY_USER":
+            if task.status != TaskStatus.RUNNING:
                 record.status = "SUCCEEDED" if model_duration is not None else "CANCELLED"
                 record.error_code = None if model_duration is not None else "PAUSED_BY_USER"
                 record.duration_ms = model_duration or int((time.monotonic() - started) * 1000)

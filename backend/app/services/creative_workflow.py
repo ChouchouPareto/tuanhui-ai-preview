@@ -43,14 +43,20 @@ def reserve_context(db, project_id):
 
 
 def compact_layout(layout):
-    """Allowlist prevents review paths, source images and lengthy case notes leaking out."""
-    return {"id": layout["id"], "version": layout["catalog_version"],
-        "coordinates": "normalized x,y,width,height; origin top-left",
-        "regions": [{"role": r["role"], "box": r["box"], "direction":
-            "empty low-detail area reserved for program typography" if r["role"] == "copy" else
-            "primary/secondary subject; do not cover copy" if r["role"] == "visual" else "optional subtle decoration"}
-            for r in layout["regions"]],
-        "rules": layout["rules"]}
+    """Allowlist prevents review paths, source images and lengthy case notes leaking out.
+
+    The output is Chinese visual prose, never English role keys or a version string:
+    qwen-image otherwise transcribes tokens like ``copy``/``visual``/``accent`` as
+    on-canvas text, which the local text guard then rejects.
+    """
+    labels = {"copy": "这块位置保持干净、低细节的背景，不填内容",
+              "visual": "主体内容放在这块位置",
+              "accent": "这块位置可点缀少量装饰"}
+    regions = []
+    for r in layout["regions"]:
+        x, y, w, h = r["box"]
+        regions.append(f"画布横向{x:.0%}到{x+w:.0%}、纵向{y:.0%}到{y+h:.0%}：{labels.get(r['role'], '区域')}")
+    return {"id": layout["id"], "安排": "；".join(regions), "规则": "，".join(layout["rules"])}
 
 
 def copy_draft_valid(draft, facts):

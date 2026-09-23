@@ -24,20 +24,34 @@ def heartbeat(record_id, stop):
             db.commit()
 
 
-def run_once():
+def recover_creations(db):
+    """Reconcile lost leases even while the professional queue is busy."""
+    from app.services.professional_queue import terminal_state
+    expired = db.scalars(select(CreationConfirmation).where(
+        CreationConfirmation.state == "RUNNING", CreationConfirmation.lease_until < utc_now())).all()
+    for record in expired:
+        changed = db.execute(update(CreationConfirmation).where(
+            CreationConfirmation.id == record.id, CreationConfirmation.state == "RUNNING",
+            CreationConfirmation.lease_until < utc_now()).values(state="RECONCILING", lease_until=None)
+            .execution_options(synchronize_session=False))
+        if changed.rowcount:
+            task = db.get(WorkflowTask, record.task_id)
+            if task:
+                db.execute(update(WorkflowTask).where(WorkflowTask.id == task.id,
+                    WorkflowTask.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING])).values(
+                    status=TaskStatus.NEEDS_USER, error_code="RECONCILING",
+                    error_message="执行中断，远端结果待核对；不会自动重复付费调用")
+                    .execution_options(synchronize_session=False))
+                db.refresh(task)
+            db.execute(update(CreationConfirmation).where(CreationConfirmation.id == record.id)
+                       .values(state=terminal_state(task) if task else "RECONCILING")
+                       .execution_options(synchronize_session=False))
+    db.commit()
+
+
+def run_creation_once():
     with SessionLocal() as db:
-        expired = db.scalars(select(CreationConfirmation).where(CreationConfirmation.state == "RUNNING", CreationConfirmation.lease_until < utc_now())).all()
-        for record in expired:
-            changed = db.execute(update(CreationConfirmation).where(CreationConfirmation.id == record.id, CreationConfirmation.state == "RUNNING", CreationConfirmation.lease_until < utc_now()).values(state="RECONCILING").execution_options(synchronize_session=False))
-            if changed.rowcount:
-                task = db.get(WorkflowTask, record.task_id)
-                if task.status != TaskStatus.SUCCEEDED:
-                    task.status = TaskStatus.NEEDS_USER
-                    task.error_code = "RECONCILING"
-                    task.error_message = "执行中断，远端结果待核对；不会自动重复付费调用"
-                else:
-                    record.state = "SUCCEEDED"
-        db.commit()
+        recover_creations(db)
         record = db.scalar(select(CreationConfirmation).where(CreationConfirmation.state == "QUEUED").order_by(CreationConfirmation.created_at))
         if not record:
             return False
@@ -72,15 +86,46 @@ def run_once():
             db.rollback()
             record = db.get(CreationConfirmation, record.id)
             task = db.get(WorkflowTask, record.task_id)
-            record.state = "RECONCILING"
-            task.status = TaskStatus.NEEDS_USER
-            task.error_code = "RECONCILING"
-            task.error_message = "任务未能完成，请核对素材及执行记录；不会自动重复调用"
+            from app.services.professional_queue import terminal_state
+            db.execute(update(WorkflowTask).where(WorkflowTask.id == task.id,
+                WorkflowTask.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING])).values(
+                status=TaskStatus.NEEDS_USER, error_code="RECONCILING",
+                error_message="任务未能完成，请核对素材及执行记录；不会自动重复调用")
+                .execution_options(synchronize_session=False))
+            db.refresh(task)
+            record.state = terminal_state(task)
+            record.lease_until = None
             db.commit()
         finally:
             stop.set()
             thread.join(timeout=2)
     return True
+
+
+def run_once():
+    from app.models import ProfessionalGenerationJob, AgentRun
+    from app.services import agent_runtime
+    from app.services.professional_queue import recover_expired, run_job
+    with SessionLocal() as db:
+        recover_expired(db)
+        recover_creations(db)
+        agent_runtime.recover(db)
+        agent = db.scalar(select(AgentRun).where(AgentRun.state == "QUEUED").order_by(AgentRun.created_at))
+        professional = db.scalar(select(ProfessionalGenerationJob).where(
+            ProfessionalGenerationJob.state == "QUEUED").order_by(ProfessionalGenerationJob.created_at))
+        creation = db.scalar(select(CreationConfirmation).where(
+            CreationConfirmation.state == "QUEUED").order_by(CreationConfirmation.created_at))
+        job_id = professional.id if professional and (not creation or professional.created_at <= creation.created_at) else None
+        oldest_image = min([j.created_at for j in (professional, creation) if j], default=None)
+        agent_id = agent.id if agent and (oldest_image is None or agent.created_at <= oldest_image) else None
+    if agent_id:
+        agent_runtime.run_job(agent_id)
+        return True
+    # Oldest ready job across both entry points. Neither queue starves the other.
+    if job_id:
+        run_job(job_id)
+        return True
+    return run_creation_once()
 
 
 def serve():

@@ -12,10 +12,41 @@ def detect_output(text, fallback="five_panel"):
              "logo":"logo", "套餐主图":"package_main", "代金券":"voucher_main", "菜品单品图":"dish", "单品图":"dish", "推荐菜":"dish",
              "团购宣传图":"promotion", "宣传图":"promotion", "首页装修图":"store_decoration", "封面图":"store_decoration", "详情页":"detail", "全案":"full_plan"}
     matches = list(re.finditer("|".join(map(re.escape, sorted(names,key=len,reverse=True))), text, re.I))
+    # A type mentioned as an element/reference is not a requested deliverable.
+    # In particular, a full-plan list must not collapse to its last item.
     selected = fallback
+    explicit = []
+    switches = []
+    denied = set()
     for match in matches:
-        if not re.search(r"不要|不用|不做", text[max(0,match.start()-4):match.start()]):
-            selected = names[match[0].lower()]
+        prefix = text[max(0, match.start()-24):match.start()]
+        suffix = text[match.end():match.end()+12]
+        clause = re.split(r"[，。；;\n]", prefix)[-1]
+        if re.search(r"参考|参照|借鉴|配色|标题|文案|角落|左上|右上|左下|右下|画面里|图中|图片里", clause):
+            continue
+        if re.search(r"[「『“\"]", prefix) and not re.search(r"[」』”\"]", prefix[prefix.rfind("「")+1:]):
+            continue
+        if re.search(r"(?:不要|不用|不做|不生成|不需要)\s*$", prefix):
+            denied.add(names[match[0].lower()])
+            continue
+        if re.search(r"(?:放|加|添加|放置|包含|包括|参考|参照|沿用|保留|上传|使用|借鉴)(?:一[个张份]|这[个张份]|一下)?\s*$", prefix):
+            continue
+        if re.match(r"(?:的)?(?:配色|风格|布局|素材|元素|位置)", suffix):
+            continue
+        direction = names[match[0].lower()]
+        if re.search(r"(?:改成|改为|换成|切换到|切换为|只做|只生成)\s*$", prefix):
+            switches.append(direction)
+        elif re.search(r"(?:做|制作|生成|设计|要)(?:一[张套份个]|个|张|套)?\s*$", prefix):
+            explicit.append(direction)
+        elif not text[:match.start()].strip() or (len(matches) == 1 and len(text) < 40 and not suffix.strip("。！! ")):
+            explicit.append(direction)
+    if switches:
+        selected = switches[-1]
+    elif explicit:
+        # Switching is explicit; otherwise the leading requested work owns its list.
+        selected = explicit[0]
+    if selected in denied:
+        raise ValueError("你排除了当前图片类型，请明确这次要制作哪一种；尚未开始理解或生成。")
     return selected
 
 

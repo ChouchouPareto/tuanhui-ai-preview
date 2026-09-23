@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     bailian_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     bailian_ocr_model: str = "qwen-vl-ocr-2025-11-20"
     bailian_vision_model: str = "qwen3-vl-plus"
+    bailian_text_model: str = "qwen-plus"
+    agent_max_text_calls: int = 2
+    admin_api_token: str = ""
     qwen_image_base_url: str = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
     qwen_image_model: str = "qwen-image-3.0"
     # The structured planner already supplies complete composition instructions.

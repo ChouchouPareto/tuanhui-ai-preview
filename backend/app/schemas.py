@@ -37,6 +37,7 @@ class AnalysisRunRequest(BaseModel):
 
 
 class FactUpdate(BaseModel):
+    show_price: bool | None = None
     store_name: str | None = None
     positioning: str | None = None
     hero_item: str | None = None
@@ -215,6 +216,8 @@ DesignStyle = Literal["appetite", "brand", "street", "minimal"]
 
 class DesignPlanCreate(BaseModel):
     style: DesignStyle = "appetite"
+    output_type: Literal["five_panel", "three_panel", "logo", "package_main", "voucher_main", "dish", "promotion", "store_decoration", "detail"] = "five_panel"
+    render_mode: Literal["real_assets", "illustration"] = "real_assets"
 
 
 class DesignPlanUpdate(BaseModel):
@@ -235,8 +238,19 @@ class DesignPlanUpdate(BaseModel):
 
 class DesignPlanConfirm(BaseModel):
     confirmed: bool
+    plan_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class GenerationRunRequest(BaseModel):
     provider: Literal["qwen", "doubao"] = "qwen"
-    allow_fallback: bool = True
+    # Accepted for old clients, but never authorizes automatic paid failover.
+    allow_fallback: bool = False
+    plan_id: str | None = Field(default=None, min_length=1, max_length=36)
+    plan_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    request_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,128}$")
+
+    @model_validator(mode="after")
+    def require_plan_binding_pair(self):
+        if (self.plan_id is None) != (self.plan_hash is None):
+            raise ValueError("plan_id 和 plan_hash 必须一起提供")
+        return self

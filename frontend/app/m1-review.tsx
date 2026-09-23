@@ -3,6 +3,8 @@
 import { Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { GenerationGallery, DeliveryResult } from "./generation-gallery";
 import { OUTPUT_NAMES } from "../lib/output-options";
+import { continuationPath } from "../lib/generation-binding";
+import { CreationEntry, entryPath } from "../lib/creation-entry";
 import { WorkflowTiming } from "./workflow-timing";
 import { createPortal } from "react-dom";
 import { apiRequest, jsonRequest, AppError } from "../lib/api-client";
@@ -10,17 +12,18 @@ import { canConfirmDraft, draftKey, DraftInput } from "../lib/intake-state";
 
 export type IntakeSeed = { text: string; assetIds: string[]; nonce: string };
 export type Snapshot = { output_type?: string; delivery_types?: string[]; copy_edit?: string | null; render_mode?: string; messages?: { role: string; content: string }[]; schema_version?: number; text: string; facts: Record<string, string | string[]>; sources: Record<string, string>; assets: { id: string; name: string; usage: string }[]; show_price: boolean; show_store_name: boolean; style: string; provider: string; gaps: { field: string; question: string; kind: string }[]; ready: boolean; project_changes: string[] };
-type Review = { creation_id: string; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; previous_task_id?: string; project_name?: string };
-type Task = { id: string; project_id?: string; creation_id?: string; status: string; progress: number; result: { deliverables?: DeliveryResult[]; output_type?: string; execution_kind?: string; long_image?: string; slices?: string[]; clean_long_image?: string; clean_slices?: string[] }; error?: { code: string; message: string } };
+type Review = { creation_id: string; entry_mode?: CreationEntry; revision: number; status: string; snapshot_hash: string; snapshot: Snapshot | null; task_id?: string; previous_task_id?: string; project_name?: string };
+type Task = { id: string; project_id?: string; creation_id?: string; status: string; progress: number; result: { entry_mode?: string; deliverables?: DeliveryResult[]; output_type?: string; execution_kind?: string; long_image?: string; slices?: string[]; clean_long_image?: string; clean_slices?: string[] }; error?: { code: string; message: string } };
 export type IntakeController = { revise: () => Promise<void>; pause: () => Promise<void> };
-type Props = { autoGenerate?: () => boolean; onGenerationActive?: (active: boolean) => void; target: HTMLElement | null; controller: Ref<IntakeController>; projectId: string; seed: IntakeSeed | null; draft: DraftInput; prepare: () => Promise<DraftInput>; onRestore: (snapshot: Snapshot) => void; onReply: (field?: string) => void; onAssets: () => void; onBusy: (busy: boolean) => void };
+type Props = { entryMode?: CreationEntry; autoGenerate?: () => boolean; onGenerationActive?: (active: boolean) => void; target: HTMLElement | null; controller: Ref<IntakeController>; projectId: string; seed: IntakeSeed | null; draft: DraftInput; prepare: () => Promise<DraftInput>; onRestore: (snapshot: Snapshot, entry?: CreationEntry) => void; onReply: (field?: string) => void; onAssets: () => void; onBusy: (busy: boolean) => void };
 
-export function M1Review({ autoGenerate, onGenerationActive, target, controller, projectId, seed, draft, prepare, onRestore, onReply, onAssets, onBusy }: Props) {
+export function M1Review({ entryMode = "oneclick", autoGenerate, onGenerationActive, target, controller, projectId, seed, draft, prepare, onRestore, onReply, onAssets, onBusy }: Props) {
   const [review, setReview] = useState<Review | null>(null);
   const [task, setTask] = useState<Task | null>(null);
   const [previousTask, setPreviousTask] = useState<Task | null>(null);
   const [error, setError] = useState("");
   const [connectionNotice, setConnectionNotice] = useState("");
+  const [restoredRun, setRestoredRun] = useState<{ task_id: string; state: string; reply?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const callbacks = useRef({ onRestore, onBusy, prepare });
   useEffect(() => { callbacks.current = { onRestore, onBusy, prepare }; }, [onRestore, onBusy, prepare]);
@@ -31,20 +34,41 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (task) onGenerationActive?.(["PENDING", "RUNNING"].includes(task.status)); }, [task, onGenerationActive]);
   const base = `/projects/${projectId}/creations`;
-  useEffect(() => { if (target) target.scrollTop = target.scrollHeight; }, [target, review?.revision, task?.status]);
+  useEffect(() => { const scroller = target?.closest(".studioMessages") || target; if (scroller) scroller.scrollTop = scroller.scrollHeight; }, [target, review?.revision, task?.status]);
   function apply(next: Review, restore = false) {
     reviewRef.current = next; setReview(next);
     if (next.project_name) window.dispatchEvent(new CustomEvent("tuanhui:project-renamed", {detail: {projectId, name: next.project_name}}));
-    if (restore && next.snapshot) callbacks.current.onRestore(next.snapshot);
+    if (restore && next.snapshot) callbacks.current.onRestore(next.snapshot, next.entry_mode);
   }
   function report(e: unknown) { setError(e instanceof Error ? e.message : "未能保存，请重试"); setTimeout(() => errorRef.current?.focus(), 0); }
 
   useEffect(() => {
     let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
     const params = new URLSearchParams(window.location.search);
     if (!seed && params.get("compose") !== "1") void (async () => {
       let saved = params.get("creation");
       let savedTask = params.get("task");
+      if (params.get("run")) {
+        async function restoreRun() {
+          try {
+            const run = await apiRequest<{project_id: string; entry_mode: CreationEntry; task_id: string; state: string; error?: string; result: {review?: Review; reply?: string}}>(`/projects/${projectId}/agent-runs/${params.get("run")}`);
+            if (stopped) return;
+            if (run.project_id !== projectId) throw new Error("该对话不属于当前项目");
+            if (run.entry_mode !== entryMode) { window.location.replace(`${entryPath(run.entry_mode)}${window.location.search}`); return; }
+            setRestoredRun({task_id: run.task_id, state: run.state, reply: run.result.reply || run.error});
+            if (["QUEUED", "RUNNING"].includes(run.state)) { timer = setTimeout(restoreRun, 1500); return; }
+            if (run.result.review?.creation_id) {
+              const next = await apiRequest<Review>(`${base}/${run.result.review.creation_id}/review`);
+              if (stopped) return;
+              apply(next, true);
+              window.history.replaceState({}, "", `${entryPath(entryMode)}?project=${projectId}&creation=${next.creation_id}`);
+            }
+          } catch (e) { if (!stopped) report(e); }
+        }
+        await restoreRun();
+        return;
+      }
       if (!saved && !savedTask) {
         const workspace = await apiRequest<{latest_creation_id?: string; tasks: Task[]}>(`/projects/${projectId}/workspace`);
         saved = workspace.latest_creation_id || null;
@@ -67,11 +91,12 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
         }
       }
     })().catch(e => { if (!stopped) report(e); });
-    return () => { stopped = true; };
-  }, [base, projectId, seed]);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [base, projectId, seed, entryMode]);
 
   async function revise(initial?: IntakeSeed) {
     if (sending.current || (task && ["PENDING", "RUNNING"].includes(task.status))) return;
+    if (restoredRun && ["QUEUED", "RUNNING"].includes(restoredRun.state)) { setError("已有需求正在理解，请等待完成；不会重复提交。"); return; }
     sending.current = true; setBusy(true); callbacks.current.onBusy(true); setError("");
     try {
       let current = reviewRef.current;
@@ -81,17 +106,17 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
       }
       if (!current || current.status === "CONFIRMED") {
         if (task?.status === "SUCCEEDED") setPreviousTask(task);
-        current = await apiRequest<Review>(base, jsonRequest("POST", current?.creation_id ? { parent_creation_id: current.creation_id } : {}));
+        current = await apiRequest<Review>(base, jsonRequest("POST", { mode: entryMode === "professional" ? "pro" : "oneclick", ...(current?.creation_id ? { parent_creation_id: current.creation_id } : {}) }));
         setTask(null);
       }
       reviewRef.current = current;
       setReview(current);
-      window.history.replaceState({}, "", `?project=${projectId}&creation=${current.creation_id}`);
+      window.history.replaceState({}, "", `${entryPath(entryMode)}?project=${projectId}&creation=${current.creation_id}`);
       const input = initial ? { ...draft, text: initial.text, assetIds: initial.assetIds, chat: true, useAi: Boolean(initial.text.trim()) } : await callbacks.current.prepare();
       const body = JSON.stringify({ expected_revision: current.revision, text: input.text, asset_ids: input.assetIds, style: input.style, provider: input.provider,
         output_type: input.outputType, delivery_types: input.outputType === "full_plan" ? input.deliveryTypes : undefined,
         input_mode: input.chat ? "chat" : input.replyField ? "reply" : "replace", reply_field: input.replyField ?? null,
-        allow_illustration: true, use_ai: Boolean(input.useAi), accepted_understanding_policy: input.useAi ? "text-understanding-paid-v1" : null });
+        allow_illustration: true, local_only: Boolean(input.localOnly), use_ai: Boolean(input.useAi), accepted_understanding_policy: input.useAi ? "text-understanding-paid-v1" : null });
       if (saveRequest.current.body !== body) saveRequest.current = { body, key: crypto.randomUUID() };
       const next = await apiRequest<Review>(`${base}/${current.creation_id}/intake-runs`, {
         method: "POST", body, headers: { "content-type": "application/json", "Idempotency-Key": saveRequest.current.key },
@@ -164,11 +189,12 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
     try { setTask(await apiRequest<Task>(`/tasks/${task.id}/pause`, jsonRequest("POST", {}))); }
     catch (e) { report(e); } finally { setBusy(false); }
   }
-  if (!target || (!review && !seed && !error && !busy)) return null;
+  if (!target || (!review && !seed && !error && !busy && !restoredRun)) return null;
   return createPortal(<section id="inline-confirmation" tabIndex={-1} className="inlineReview inlineFeedback" aria-label="本次生成摘要" aria-busy={busy}>
     <div className="chatMessages" aria-label="创作对话">{(snapshot?.messages ?? (snapshot?.text ? [{role:"user", content:snapshot.text}] : [])).map((message, index) => <div key={index} className={`chatMessage ${message.role}`}><span className="srOnly">{message.role === "user" ? "你" : "团绘"}</span><p>{message.content}</p></div>)}</div>
     {error && <div role="alert" tabIndex={-1} ref={errorRef} className="inlineReviewError">{error}<button type="button" disabled={busy} onClick={() => onReply()}>继续修改</button></div>}
     {connectionNotice && <p role="status">{connectionNotice}</p>}
+    {restoredRun && !review && <><p role="status">{restoredRun.reply || "已找回原对话任务，正在等待处理；没有重新调用模型。"}</p><WorkflowTiming path={`/projects/${projectId}/tasks/${restoredRun.task_id}/activity`} active={["QUEUED", "RUNNING"].includes(restoredRun.state)} /></>}
     {busy && <p role="status">我在看你的需求…</p>}
     <WorkflowTiming path={task ? `/projects/${projectId}/tasks/${task.id}/activity` : review?.creation_id ? `${base}/${review.creation_id}/activity` : null} active={busy || !!task && ["PENDING", "RUNNING"].includes(task.status)} />
     {previousTask && task?.status !== "SUCCEEDED" && <details className="previousResult"><summary>查看上一版作品（已保留）</summary><GenerationGallery projectId={projectId} taskId={previousTask.id} longImage={previousTask.result.long_image} slices={previousTask.result.slices} cleanLongImage={previousTask.result.clean_long_image} cleanSlices={previousTask.result.clean_slices} deliverables={previousTask.result.deliverables} /></details>}
@@ -183,8 +209,8 @@ export function M1Review({ autoGenerate, onGenerationActive, target, controller,
         <div className="inlineReadyActions"><span className="generationConsentNote">{textOnly ? "不重新调用生图模型，原作品保留。" : batch ? `包含 ${snapshot.delivery_types?.map(t => OUTPUT_NAMES[t]).join("、")}；最多 ${snapshot.delivery_types?.length} 次生图调用，按实际用量计费。` : "点击即确认素材使用权并同意本次生图费用。"}</span><button type="button" className="inlineGenerate" disabled={busy} onClick={confirm}>{textOnly ? "更新文字" : batch ? "同意费用并生成以上作品" : `生成${outputName}`}</button></div>
       </div>}
     </>}
-    {snapshot?.messages?.length && snapshot.gaps.some(g => g.field === "assets") && <div className="chatAssetChoices"><button type="button" className="chatUpload" onClick={onAssets}>上传菜品照片</button><button type="button" className="chatUpload" onClick={() => onReply("illustration")}>先做 AI 示意图</button><small>示意图不代表真实菜品，导出可选择水印版本。</small></div>}
+    {!!snapshot?.messages?.length && snapshot.gaps.some(g => g.field === "assets") && <div className="chatAssetChoices"><button type="button" className="chatUpload" onClick={onAssets}>上传菜品照片</button><button type="button" className="chatUpload" onClick={() => onReply("illustration")}>先做 AI 示意图</button><small>示意图不代表真实菜品，导出可选择水印版本。</small></div>}
     {task && ["PENDING","RUNNING"].includes(task.status) && <div className="studioProgress" role="status"><h2>{textOnly ? "正在更新文字" : task.status === "PENDING" ? "正在排队，尚未开始生图" : batch ? "正在逐项生成作品" : single ? `正在生成${outputName}` : "正在生成整张长图"}</h2><p>{textOnly ? "保留原画面与构图，重新排字并导出。" : task.status === "PENDING" ? "后台接单后会自动开始，可以随时停止排队。" : batch ? "已完成的作品会逐项显示；停止后不再启动剩余项目。" : single ? "完成后按 4:3 导出。" : `完成后会自动排版，再切成${three ? "三" : "五"}张。`}</p><progress aria-label="任务进度" max={100} value={task.progress} /><p>{textOnly ? "本次不调用生图模型。" : "已发送的模型请求可能仍会计费；停止后不再继续后续处理。"}</p></div>}
-    {review?.status === "CONFIRMED" && <div role="status"><p>{task?.error?.message || (task?.status === "SUCCEEDED" ? "作品已生成，可以下载。" : task?.status === "RUNNING" ? "正在生成，离开页面不会取消任务。" : task?.status === "NEEDS_USER" ? "已停止，需求和素材已保留。需要重新生成时请开始下一次创作。" : task?.status === "FAILED_FINAL" ? "这次生成没有完成，需求已保留，没有自动重试。" : "任务已保存，等待后台执行。")}</p>{task && <GenerationGallery projectId={projectId} taskId={task.id} longImage={task.result.long_image} slices={task.result.slices} cleanLongImage={task.result.clean_long_image} cleanSlices={task.result.clean_slices} deliverables={task.result.deliverables} />}<div className="studioResultActions"><a className="primaryButton" href={`${direction === "full_plan" ? "/full-plan" : "/"}?project=${projectId}&compose=1`}>继续下一次创作</a><a href={`/projects?project=${projectId}`}>返回项目</a></div></div>}
+    {review?.status === "CONFIRMED" && <div role="status"><p>{task?.error?.message || (task?.status === "SUCCEEDED" ? "作品已生成，可以下载。" : task?.status === "RUNNING" ? "正在生成，离开页面不会取消任务。" : task?.status === "NEEDS_USER" ? "已停止，需求和素材已保留。需要重新生成时请开始下一次创作。" : task?.status === "FAILED_FINAL" ? "这次生成没有完成，需求已保留，没有自动重试。" : "任务已保存，等待后台执行。")}</p>{task && <GenerationGallery projectId={projectId} taskId={task.id} longImage={task.result.long_image} slices={task.result.slices} cleanLongImage={task.result.clean_long_image} cleanSlices={task.result.clean_slices} deliverables={task.result.deliverables} />}<div className="studioResultActions"><a className="primaryButton" href={`${continuationPath(task?.result.entry_mode, snapshot?.output_type, direction)}?project=${projectId}&compose=1`}>继续下一次创作</a><a href={`/projects?project=${projectId}`}>返回项目</a></div></div>}
   </section>, target);
 }

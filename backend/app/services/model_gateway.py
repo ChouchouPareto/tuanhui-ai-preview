@@ -59,7 +59,9 @@ def _post_chat(model: str, messages: list[dict]) -> tuple[str, dict, int]:
         response = httpx.post(
             f"{settings.bailian_base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {settings.dashscope_api_key}", "Content-Type": "application/json"},
-            json={"model": model, "messages": messages, "temperature": 0},
+            json={"model": model, "messages": messages, "temperature": 0,
+                  **({"enable_thinking": False, "response_format": {"type": "json_object"}, "max_tokens": 3000}
+                     if model == settings.bailian_text_model else {})},
             timeout=settings.model_timeout_seconds,
         )
     except httpx.TimeoutException as exc:

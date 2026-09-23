@@ -76,7 +76,7 @@ def creative_direction(facts):
             category, headline, subject = category_name, title, visual
             break
     if facts.get("hero_item"):
-        subject = f"围绕用户提供的本次重点「{_text(facts['hero_item'], '')}」设计主题静物；非菜品主题不能画成菜名"
+        subject = f"{_text(facts['hero_item'], '')}主题静物"
     return {
         "category": category, "headline": headline, "subject": subject, "source": "creative_interpretation_not_menu",
         "visuals": [

@@ -20,6 +20,7 @@ PROMPT = """你是本地生活商业设计的需求理解角色，支持餐饮�
 理解否定、修改、多个选项：无法确定本次选择的字段列入 uncertain_fields。
 返回 JSON：{"facts":{"字段":{"value":"用户原文中的连续子串","quote":"包含该值的原文证据"}},"uncertain_fields":["字段"]}。
 仅允许 store_name、hero_item、hero_price、positioning、selling_points。
+配色、构图、清爽简约等视觉要求不是经营事实，不得放入 positioning 或 selling_points；视觉风格只放 style_hint。
 value 和 quote 必须原样取自本次文字；不把用户指令、示例模板、被否定的旧值当事实。
 在同一个JSON内可另附 creative_draft：{"headline":"24字内的吸引人标题","subheadline":"36字内的补充文案"}。
 creative_draft不是事实抽取：围绕用户品类和消费场景自然表达，避免空泛口号、反复写店名；没有依据不写价格、数量、优惠、现做、手工、新鲜、正宗、疗效、销量、绝对化或贬低竞品的表达。
@@ -62,7 +63,7 @@ def understand(db, creation, text, request_hash):
         db.rollback()
         raise ModelGatewayError("AI_ALREADY_RUNNING", "本次理解已在处理中，请勿重复提交")
     record = ModelCallRecord(project_id=creation.project_id, task_id=task.id, provider="bailian",
-                            model=settings.bailian_vision_model, contract="intake-text-v1", status="RUNNING")
+                            model=settings.bailian_text_model, contract="intake-text-v1", status="RUNNING")
     db.add(record)
     db.commit()
     started = time.monotonic()
@@ -71,7 +72,7 @@ def understand(db, creation, text, request_hash):
         previous = db.scalar(select(IntakeRevision).where(IntakeRevision.creation_id == creation.id,
                                                         IntakeRevision.revision == creation.revision))
         context = {k: str(v)[:500] for k,v in (previous.snapshot.get("facts", {}) if previous else {}).items() if k in FIELDS}
-        content, usage, duration = _post_chat(settings.bailian_vision_model, [
+        content, usage, duration = _post_chat(settings.bailian_text_model, [
             {"role": "system", "content": PROMPT + "\n" + COPY_PE.read_text(encoding="utf-8") + "\nknown_context是已记录资料，仅帮助理解指代；facts只返回本次text中新增或修改的事实，不能把known_context当成本次quote。"},
             {"role": "user", "content": json.dumps({"text": text, "known_context": context}, ensure_ascii=False)},
         ])

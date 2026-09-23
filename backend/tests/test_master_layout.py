@@ -21,7 +21,7 @@ def test_background_prompt_ignores_old_scene_instructions():
     plan = build_design_plan({"store_name": "测试店", "hero_item": "蒸鱼"})
     plan["frames"][0]["visual"] = "旧版强制门头场景"
     assert "旧版强制门头场景" not in build_visual_prompt(plan)
-    assert "不绘制食物" in build_visual_prompt(plan)
+    assert "不要食物、菜品、餐具或人物" in build_visual_prompt(plan)
 
 
 def test_master_uses_real_asset_and_exact_slices(tmp_path):

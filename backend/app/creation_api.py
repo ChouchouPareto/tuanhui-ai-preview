@@ -77,7 +77,7 @@ def intake(project_id: str, creation_id: str, payload: IntakeInput,
         db.rollback()
         fail("STALE_REVISION", "资料已更新，请刷新后重新检查")
     display = db.get(ProjectDisplayState, project_id)
-    if creation.mode == "oneclick" and not (display and display.custom_name):
+    if not (display and display.custom_name):
         update_project_name(db.get(StoreProject, project_id), snapshot, previous_revision.snapshot if previous_revision else None)
     db.add(IntakeRevision(creation_id=creation_id, revision=next_revision, request_key=idempotency_key,
                          request_hash=request_hash, snapshot=snapshot, snapshot_hash=digest(snapshot)))
@@ -97,6 +97,10 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
     if existing:
         return {"confirmation_id": existing.id, "task_id": existing.task_id, "state": existing.state}
     snapshot = item.snapshot
+    from app.services.dialogue_routing import guard_intake_message
+    last_user = next((m.get("content", "") for m in reversed(snapshot.get("messages", [])) if m.get("role") == "user"), None)
+    if last_user is not None or snapshot.get("text"):
+        guard_intake_message(last_user if last_user is not None else snapshot["text"], has_result=bool(snapshot.get("parent_creation_id")))
     delivery_types = snapshot.get("delivery_types") or (["voucher_main", "five_panel", "logo"] if snapshot.get("output_type") == "full_plan" else [snapshot.get("output_type", "five_panel")])
     if payload.approved_image_calls < len(delivery_types) and not snapshot.get("copy_edit"):
         fail("BATCH_BUDGET_REQUIRED", f"本次包含 {len(delivery_types)} 项独立生成，请先确认这些项目的调用费用。尚未启动生图。")
@@ -129,6 +133,7 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
     plan_data["brand_references"] = snapshot.get("design_references", {})
     plan_data["selected_asset_ids"] = [a["id"] for a in snapshot["assets"] if a["usage"] == "renderable"]
     plan_data["creation_id"] = creation_id
+    plan_data["entry_mode"] = "fullplan" if snapshot.get("output_type") == "full_plan" else ("professional" if creation.mode == "pro" else "oneclick")
     if plan_data["output_type"] == "logo":
         plan_data["render_mode"], plan_data["selected_asset_ids"] = "illustration", []
     if len(delivery_types) > 1:
@@ -170,7 +175,7 @@ def confirm(project_id: str, creation_id: str, payload: ConfirmInput,
         plan_data["execution"] = {"kind": "text_only", "source_task_id": parent_task.id}
     version = (db.scalar(select(func.max(DesignPlan.version)).where(DesignPlan.project_id == project_id)) or 0) + 1
     plan = DesignPlan(project_id=project_id, fact_version=0, version=version, status="CONFIRMED", plan=plan_data, confirmed_at=utc_now())
-    task = WorkflowTask(project_id=project_id, task_type="group_buying_image_generation", result={"creation_id": creation_id, "output_type": plan_data["output_type"], "execution_kind": plan_data.get("execution", {}).get("kind", "new_image")})
+    task = WorkflowTask(project_id=project_id, task_type="group_buying_image_generation", result={"creation_id": creation_id, "entry_mode": plan_data.get("entry_mode", "oneclick"), "output_type": plan_data["output_type"], "execution_kind": plan_data.get("execution", {}).get("kind", "new_image")})
     db.add_all([plan, task])
     db.flush()
     record = CreationConfirmation(creation_id=creation_id, revision=creation.revision, request_key=idempotency_key,
